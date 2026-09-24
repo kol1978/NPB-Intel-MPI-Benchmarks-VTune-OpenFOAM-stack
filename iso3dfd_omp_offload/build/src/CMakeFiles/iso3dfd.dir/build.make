@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload
+CMAKE_SOURCE_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build
+CMAKE_BINARY_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build
 
 # Include any dependencies generated for this target.
 include src/CMakeFiles/iso3dfd.dir/depend.make
@@ -73,32 +73,32 @@ src/CMakeFiles/iso3dfd.dir/codegen:
 .PHONY : src/CMakeFiles/iso3dfd.dir/codegen
 
 src/CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o: src/CMakeFiles/iso3dfd.dir/flags.make
-src/CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o: /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src/iso3dfd.cpp
+src/CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o: /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src/iso3dfd.cpp
 src/CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o: src/CMakeFiles/iso3dfd.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object src/CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o"
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o -MF CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o.d -o CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o -c /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src/iso3dfd.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object src/CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o"
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o -MF CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o.d -o CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o -c /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src/iso3dfd.cpp
 
 src/CMakeFiles/iso3dfd.dir/iso3dfd.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/iso3dfd.dir/iso3dfd.cpp.i"
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src/iso3dfd.cpp > CMakeFiles/iso3dfd.dir/iso3dfd.cpp.i
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src/iso3dfd.cpp > CMakeFiles/iso3dfd.dir/iso3dfd.cpp.i
 
 src/CMakeFiles/iso3dfd.dir/iso3dfd.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/iso3dfd.dir/iso3dfd.cpp.s"
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src/iso3dfd.cpp -o CMakeFiles/iso3dfd.dir/iso3dfd.cpp.s
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src/iso3dfd.cpp -o CMakeFiles/iso3dfd.dir/iso3dfd.cpp.s
 
 src/CMakeFiles/iso3dfd.dir/utils.cpp.o: src/CMakeFiles/iso3dfd.dir/flags.make
-src/CMakeFiles/iso3dfd.dir/utils.cpp.o: /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src/utils.cpp
+src/CMakeFiles/iso3dfd.dir/utils.cpp.o: /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src/utils.cpp
 src/CMakeFiles/iso3dfd.dir/utils.cpp.o: src/CMakeFiles/iso3dfd.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object src/CMakeFiles/iso3dfd.dir/utils.cpp.o"
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/CMakeFiles/iso3dfd.dir/utils.cpp.o -MF CMakeFiles/iso3dfd.dir/utils.cpp.o.d -o CMakeFiles/iso3dfd.dir/utils.cpp.o -c /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src/utils.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object src/CMakeFiles/iso3dfd.dir/utils.cpp.o"
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/CMakeFiles/iso3dfd.dir/utils.cpp.o -MF CMakeFiles/iso3dfd.dir/utils.cpp.o.d -o CMakeFiles/iso3dfd.dir/utils.cpp.o -c /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src/utils.cpp
 
 src/CMakeFiles/iso3dfd.dir/utils.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/iso3dfd.dir/utils.cpp.i"
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src/utils.cpp > CMakeFiles/iso3dfd.dir/utils.cpp.i
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src/utils.cpp > CMakeFiles/iso3dfd.dir/utils.cpp.i
 
 src/CMakeFiles/iso3dfd.dir/utils.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/iso3dfd.dir/utils.cpp.s"
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src/utils.cpp -o CMakeFiles/iso3dfd.dir/utils.cpp.s
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src && /opt/intel/oneapi/compiler/2026.1/bin/icpx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src/utils.cpp -o CMakeFiles/iso3dfd.dir/utils.cpp.s
 
 # Object files for target iso3dfd
 iso3dfd_OBJECTS = \
@@ -113,18 +113,18 @@ src/iso3dfd: src/CMakeFiles/iso3dfd.dir/utils.cpp.o
 src/iso3dfd: src/CMakeFiles/iso3dfd.dir/build.make
 src/iso3dfd: src/CMakeFiles/iso3dfd.dir/compiler_depend.ts
 src/iso3dfd: src/CMakeFiles/iso3dfd.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable iso3dfd"
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/iso3dfd.dir/link.txt --verbose=$(VERBOSE)
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable iso3dfd"
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/iso3dfd.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
 src/CMakeFiles/iso3dfd.dir/build: src/iso3dfd
 .PHONY : src/CMakeFiles/iso3dfd.dir/build
 
 src/CMakeFiles/iso3dfd.dir/clean:
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src && $(CMAKE_COMMAND) -P CMakeFiles/iso3dfd.dir/cmake_clean.cmake
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src && $(CMAKE_COMMAND) -P CMakeFiles/iso3dfd.dir/cmake_clean.cmake
 .PHONY : src/CMakeFiles/iso3dfd.dir/clean
 
 src/CMakeFiles/iso3dfd.dir/depend:
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src/CMakeFiles/iso3dfd.dir/DependInfo.cmake "--color=$(COLOR)" iso3dfd
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/CMakeFiles/iso3dfd.dir/DependInfo.cmake "--color=$(COLOR)" iso3dfd
 .PHONY : src/CMakeFiles/iso3dfd.dir/depend
 

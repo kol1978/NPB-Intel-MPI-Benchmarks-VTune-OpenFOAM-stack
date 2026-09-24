@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload
+CMAKE_SOURCE_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build
+CMAKE_BINARY_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build
 
 # Utility rule file for run.
 
@@ -67,7 +67,7 @@ include src/CMakeFiles/run.dir/compiler_depend.make
 include src/CMakeFiles/run.dir/progress.make
 
 src/CMakeFiles/run:
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src && ./iso3dfd 256 256 256 16 8 64 100
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src && ./iso3dfd 256 256 256 16 8 64 100
 
 src/CMakeFiles/run.dir/codegen:
 .PHONY : src/CMakeFiles/run.dir/codegen
@@ -81,10 +81,10 @@ src/CMakeFiles/run.dir/build: run
 .PHONY : src/CMakeFiles/run.dir/build
 
 src/CMakeFiles/run.dir/clean:
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src && $(CMAKE_COMMAND) -P CMakeFiles/run.dir/cmake_clean.cmake
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src && $(CMAKE_COMMAND) -P CMakeFiles/run.dir/cmake_clean.cmake
 .PHONY : src/CMakeFiles/run.dir/clean
 
 src/CMakeFiles/run.dir/depend:
-	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src/CMakeFiles/run.dir/DependInfo.cmake "--color=$(COLOR)" run
+	cd /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/CMakeFiles/run.dir/DependInfo.cmake "--color=$(COLOR)" run
 .PHONY : src/CMakeFiles/run.dir/depend
 

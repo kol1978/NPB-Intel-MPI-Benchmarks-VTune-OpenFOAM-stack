@@ -1,0 +1,395 @@
+#!/bin/bash
+# ─────────────────────────────────────────────────────────
+#  iso3dfd_omp_offload — CPU-only (NO_OFFLOAD=ON)
+#  Запуск:  ./runIso3dfd
+#
+#  Режимы:
+#    1) Чистый замер (0% overhead) — точное время
+#    2) VTune hotspots (~5% HW / ~2× SW) — детальный анализ CPU
+#    3) APS — Application Performance Snapshot (1–3% overhead)
+#       3a) all  — все метрики (HW + OpenMP), 1–3%
+#       3b) hwc  — только HW-счётчики (CPI, Memory, NUMA, Vectorization), <1%
+#       3c) omp  — только OpenMP (Imbalance, Serial Time), <1%
+#
+#  Каждый запуск создаёт уникальную папку:
+#    run_iso3dfd_<grid>_<block>_<iters>_<threads>_<timestamp>/
+#  log.timing — в корне проекта, накапливает замеры (не удаляется!)
+# ─────────────────────────────────────────────────────────
+
+set -eo pipefail
+
+# ── Автоопределение корня проекта ──────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$SCRIPT_DIR"
+
+# Ищем CMakeLists.txt вверх по дереву
+for d in "$SCRIPT_DIR" "$SCRIPT_DIR/.." "$SCRIPT_DIR/../.."; do
+    if [ -f "$d/CMakeLists.txt" ]; then
+        PROJECT_DIR="$(cd "$d" && pwd)"
+        break
+    fi
+done
+cd "$PROJECT_DIR" || { echo "ОШИБКА: не могу перейти в $PROJECT_DIR"; exit 1; }
+
+# ── Поиск бинарника ────────────────────────────────────────
+BINARY=""
+for candidate in \
+    "$SCRIPT_DIR/iso3dfd" \
+    "$PROJECT_DIR/build/src/iso3dfd" \
+    "$SCRIPT_DIR/../build/src/iso3dfd" \
+    "$SCRIPT_DIR/../../build/src/iso3dfd"; do
+    if [ -x "$candidate" ]; then
+        BINARY="$candidate"
+        break
+    fi
+done
+
+if [ -z "$BINARY" ] || [ ! -x "$BINARY" ]; then
+    echo "ОШИБКА: бинарник iso3dfd не найден или не исполняемый."
+    echo "Соберите проект:"
+    echo "  cd build && cmake -DNO_OFFLOAD=ON -DVERIFY_RESULTS=OFF .. && make -j\$(nproc)"
+    exit 1
+fi
+
+# ── Проверка icpx в PATH ───────────────────────────────────
+if ! command -v icpx &>/dev/null; then
+    echo "ВНИМАНИЕ: icpx не найден в PATH."
+    echo "Выполните: source /opt/intel/oneapi/compiler/latest/env/vars.sh"
+    echo ""
+fi
+
+# ── Параметры по умолчанию ─────────────────────────────────
+GRID_X=${GRID_X:-256}
+GRID_Y=${GRID_Y:-256}
+GRID_Z=${GRID_Z:-256}
+BLK_X=${BLK_X:-16}
+BLK_Y=${BLK_Y:-8}
+BLK_Z=${BLK_Z:-64}
+ITERS=${ITERS:-100}
+OMP_THREADS=${OMP_THREADS:-$(nproc)}
+
+export OMP_NUM_THREADS="$OMP_THREADS"
+
+# ── Вывод параметров ───────────────────────────────────────
+echo "═══════════════════════════════════════════════════════════"
+echo "  iso3dfd_omp_offload — CPU-only (NO_OFFLOAD=ON)"
+echo "  Binary: $BINARY"
+echo "  Grid:  ${GRID_X} x ${GRID_Y} x ${GRID_Z}"
+echo "  Block: ${BLK_X} x ${BLK_Y} x ${BLK_Z}"
+echo "  Iterations: ${ITERS}"
+echo "  OMP_NUM_THREADS: ${OMP_THREADS}"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+
+# ── Интерактивный выбор режима ─────────────────────────────
+echo "  Режим запуска:"
+echo "    1) Чистый замер (0% overhead) — точное время"
+echo "    2) VTune hotspots (~5% HW / ~2× SW) — детальный анализ CPU"
+echo "    3) APS — Application Performance Snapshot (1–3% overhead)"
+echo ""
+read -p "  Выберите [1-3]: " MODE
+
+APS_COLLECT_MODE="all"
+
+if [ "$MODE" = "3" ]; then
+    echo ""
+    echo "  APS — режим сбора (--collection-mode):"
+    echo "    a) all  — все метрики: HW + OpenMP (1–3% overhead)"
+    echo "    b) hwc  — только HW-счётчики: CPI, Memory, NUMA, Vectorization (<1%)"
+    echo "    c) omp  — только OpenMP: Imbalance, Serial Time (<1%)"
+    echo ""
+    read -p "  Выберите [a/b/c]: " APS_CHOICE
+    case "$APS_CHOICE" in
+        a|A) APS_COLLECT_MODE="all"  ;;
+        b|B) APS_COLLECT_MODE="hwc"  ;;
+        c|C) APS_COLLECT_MODE="omp"  ;;
+        *)   echo "По умолчанию: all"; APS_COLLECT_MODE="all" ;;
+    esac
+fi
+
+case "$MODE" in
+    1) PROFILE=false; APS_MODE=false ;;
+    2) PROFILE=true;  APS_MODE=false ;;
+    3) PROFILE=false; APS_MODE=true  ;;
+    *)
+        echo "Неверный выбор. По умолчанию: чистый замер."
+        PROFILE=false; APS_MODE=false
+        ;;
+esac
+
+echo ""
+
+# ── Уникальная директория ──────────────────────────────────
+TIMESTAMP_HUMAN=$(date +"%Y-%m-%d_%H-%M-%S")
+TIMESTAMP_SHORT=$(date +%Y%m%d_%H%M%S)
+
+RUN_DIR="run_iso3dfd_${GRID_X}x${GRID_Y}x${GRID_Z}_b${BLK_X}x${BLK_Y}x${BLK_Z}_i${ITERS}_t${OMP_THREADS}_${TIMESTAMP_HUMAN}"
+mkdir -p "$RUN_DIR"
+
+echo "═══════════════════════════════════════════════════════════"
+echo "  Директория запуска: ${RUN_DIR}/"
+if [ "$PROFILE" = true ]; then
+    echo "  Профилирование: VTune hotspots"
+elif [ "$APS_MODE" = true ]; then
+    echo "  Профилирование: APS (--collection-mode=${APS_COLLECT_MODE})"
+else
+    echo "  Профилирование: отключено (чистый замер)"
+fi
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+
+# ── Очистка зависших процессов ──────────────────────────────
+if pgrep -f "iso3dfd" >/dev/null 2>&1; then
+    echo "--- Убийство зависших процессов iso3dfd ---"
+    pkill -9 -f "iso3dfd" 2>/dev/null || true
+fi
+sleep 1
+echo ""
+
+# ── Подготовка VTune ────────────────────────────────────────
+VTUNE_RESULT=""
+VTUNE_ACTUAL=""
+
+if [ "$PROFILE" = true ]; then
+    VTUNE_HOME="/opt/intel/oneapi/vtune/latest"
+    if [ ! -f "$VTUNE_HOME/vtune-vars.sh" ]; then
+        echo "ОШИБКА: VTune не найден в $VTUNE_HOME"
+        exit 1
+    fi
+    source "$VTUNE_HOME/vtune-vars.sh"
+
+    # ptrace_scope для VTune
+    PTRACE_ORIG=$(cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || echo "")
+    if [ -n "$PTRACE_ORIG" ] && [ "$PTRACE_ORIG" != "0" ]; then
+        echo "--- Включение ptrace_scope=0 (для VTune) ---"
+        if ! sudo sysctl -w kernel.yama.ptrace_scope=0 2>/dev/null; then
+            echo "ВНИМАНИЕ: не удалось установить ptrace_scope=0"
+        fi
+        restore_ptrace() {
+            if [ -n "$PTRACE_ORIG" ]; then
+                sudo sysctl -w kernel.yama.ptrace_scope=$PTRACE_ORIG 2>/dev/null || true
+            fi
+        }
+        trap restore_ptrace EXIT
+    fi
+
+    VTUNE_RESULT="${RUN_DIR}/vtune_iso3dfd_${TIMESTAMP_SHORT}"
+    echo "--- VTune: директория результатов: $VTUNE_RESULT ---"
+    echo "--- Режим: software sampling (SIGPROF, 10 мс) ---"
+    echo ""
+fi
+
+# ── Подготовка APS ──────────────────────────────────────────
+APS_RESULT=""
+APS_RESULT_DIR=""
+
+if [ "$APS_MODE" = true ]; then
+    APS_HOME="/opt/intel/oneapi/vtune/latest"
+    if [ ! -f "$APS_HOME/apsvars.sh" ]; then
+        echo "ОШИБКА: APS не найден в $APS_HOME/apsvars.sh"
+        echo "Установите Intel oneAPI Base Toolkit (включает VTune/APS)"
+        exit 1
+    fi
+    source "$APS_HOME/apsvars.sh"
+
+    APS_RESULT_DIR="${RUN_DIR}/aps_result_${TIMESTAMP_SHORT}"
+    echo "--- APS: директория результатов: $APS_RESULT_DIR ---"
+    echo "--- Режим сбора: --collection-mode=${APS_COLLECT_MODE} ---"
+    echo ""
+fi
+
+# ── Замер времени ───────────────────────────────────────────
+calc_elapsed() {
+    awk "BEGIN {printf \"%.2f\", $2 - $1}"
+}
+
+ARGS="${GRID_X} ${GRID_Y} ${GRID_Z} ${BLK_X} ${BLK_Y} ${BLK_Z} ${ITERS}"
+echo "--- Запуск iso3dfd ${ARGS} ---"
+echo "--- OMP_NUM_THREADS=${OMP_THREADS} ---"
+echo "--- Лог: ${RUN_DIR}/log.iso3dfd ---"
+echo ""
+
+START=$(date +%s.%N)
+
+if [ "$PROFILE" = true ]; then
+    # ── VTune hotspots ──
+    vtune -quiet -collect hotspots \
+        -knob sampling-mode=sw \
+        -knob enable-characterization-insights=false \
+        -finalization-mode=deferred \
+        -r "$VTUNE_RESULT" \
+        -- "$BINARY" $ARGS \
+        > "${RUN_DIR}/log.iso3dfd" 2>&1 \
+    || true
+
+    VTUNE_ACTUAL=$(find . -maxdepth 2 -type d -name "vtune_iso3dfd_${TIMESTAMP_SHORT}*" | head -1 | sed 's|^\./||')
+
+elif [ "$APS_MODE" = true ]; then
+    # ── APS ──
+    set +e
+    aps --collection-mode="$APS_COLLECT_MODE" \
+        -r "$APS_RESULT_DIR" \
+        -- "$BINARY" $ARGS \
+        > "${RUN_DIR}/log.iso3dfd" 2>&1
+    APS_EXIT=$?
+    set -e
+
+    # APS создаёт поддиректорию внутри result-dir
+    APS_RESULT=$(find "$APS_RESULT_DIR" -maxdepth 1 -type d -name "aps_result*" 2>/dev/null | head -1)
+    if [ -z "$APS_RESULT" ]; then
+        # Иногда APS кладёт прямо в указанный каталог
+        if [ -d "$APS_RESULT_DIR" ] && ls "$APS_RESULT_DIR"/*.csv >/dev/null 2>&1; then
+            APS_RESULT="$APS_RESULT_DIR"
+        fi
+    fi
+
+else
+    # ── Чистый замер ──
+    set +e
+    "$BINARY" $ARGS > "${RUN_DIR}/log.iso3dfd" 2>&1
+    set -e
+fi
+
+END=$(date +%s.%N)
+ELAPSED=$(calc_elapsed "$START" "$END")
+
+# ── Проверка успешности ─────────────────────────────────────
+ISO_OK=false
+if [ -s "${RUN_DIR}/log.iso3dfd" ]; then
+    if grep -q "throughput" "${RUN_DIR}/log.iso3dfd" 2>/dev/null; then
+        ISO_OK=true
+    fi
+fi
+
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+if [ "$ISO_OK" = true ]; then
+    if [ "$PROFILE" = true ]; then
+        echo "  iso3dfd + VTune (collection): ${ELAPSED} сек"
+        echo "  Включает overhead SW sampling (~2× для коротких запусков)"
+    elif [ "$APS_MODE" = true ]; then
+        echo "  iso3dfd + APS (${APS_COLLECT_MODE}): ${ELAPSED} сек"
+        echo "  Overhead: 1–3% (all) или <1% (hwc/omp)"
+    else
+        echo "  iso3dfd (чистый): ${ELAPSED} сек"
+    fi
+
+    # Извлечение метрик iso3dfd
+    KERNEL_TIME=$(grep -oP 'time\s*:\s*\K[0-9.]+' "${RUN_DIR}/log.iso3dfd" 2>/dev/null | head -1)
+    THROUGHPUT=$(grep -oP 'throughput\s*:\s*\K[0-9.]+' "${RUN_DIR}/log.iso3dfd" 2>/dev/null | head -1)
+    GFLOPS=$(grep -oP 'flops\s*:\s*\K[0-9.]+' "${RUN_DIR}/log.iso3dfd" 2>/dev/null | head -1)
+    GBYTES=$(grep -oP 'bytes\s*:\s*\K[0-9.]+' "${RUN_DIR}/log.iso3dfd" 2>/dev/null | head -1)
+
+    echo ""
+    echo "  ── Метрики iso3dfd ──"
+    echo "    Kernel time:  ${KERNEL_TIME:-?} сек"
+    echo "    Throughput:   ${THROUGHPUT:-?} Mpts/s"
+    echo "    GFlops:       ${GFLOPS:-?}"
+    echo "    GBytes/s:     ${GBYTES:-?}"
+
+    # Запись в log.timing
+    TAG="clean"
+    if [ "$PROFILE" = true ]; then TAG="vtune"; fi
+    if [ "$APS_MODE" = true ]; then TAG="aps-${APS_COLLECT_MODE}"; fi
+    echo "=== iso3dfd (${TAG}, ${ELAPSED} sec, grid=${GRID_X}x${GRID_Y}x${GRID_Z}, block=${BLK_X}x${BLK_Y}x${BLK_Z}, iters=${ITERS}, threads=${OMP_THREADS}, kernel=${KERNEL_TIME:-?}s, thru=${THROUGHPUT:-?}Mpts/s, gflops=${GFLOPS:-?}, gbytes=${GBYTES:-?}, dir=${RUN_DIR}) ===" >> log.timing
+else
+    echo "  ВНИМАНИЕ: iso3dfd не завершился корректно (нет 'throughput' в логе)"
+    echo "  Время: ${ELAPSED} сек"
+    echo "=== iso3dfd (FAILED, ${ELAPSED} sec, dir=${RUN_DIR}) ===" >> log.timing
+fi
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+
+# ── VTune: финализация и отчёты ─────────────────────────────
+if [ "$PROFILE" = true ] && [ -n "$VTUNE_ACTUAL" ]; then
+    echo "--- Финализация VTune ---"
+    FINAL_START=$(date +%s.%N)
+    set +e
+    vtune -finalize -r "$VTUNE_ACTUAL" 2>&1 | tail -3
+    FINAL_EXIT=$?
+    set -e
+    FINAL_END=$(date +%s.%N)
+    FINAL_ELAPSED=$(calc_elapsed "$FINAL_START" "$FINAL_END")
+    echo "  Финализация: ${FINAL_ELAPSED} сек"
+    echo ""
+
+    if [ $FINAL_EXIT -eq 0 ]; then
+        echo "--- Сводный отчёт (summary) ---"
+        set +e
+        vtune -report summary -r "$VTUNE_ACTUAL" 2>/dev/null
+        set -e
+        echo ""
+
+        echo "--- Топ-10 горячих точек ---"
+        set +e
+        vtune -report hotspots -r "$VTUNE_ACTUAL" -limit 10
+        set -e
+        echo ""
+    else
+        echo "ВНИМАНИЕ: финализация завершилась с кодом $FINAL_EXIT"
+        echo "Откройте в GUI: vtune-gui $VTUNE_ACTUAL"
+        echo ""
+    fi
+fi
+
+# ── APS: отчёты ─────────────────────────────────────────────
+if [ "$APS_MODE" = true ] && [ -n "$APS_RESULT" ]; then
+    echo "--- APS: генерация отчёта ---"
+    echo ""
+    echo "  Результаты: $APS_RESULT"
+    echo ""
+
+    # Консольный отчёт
+    echo "--- Краткий отчёт APS ---"
+    set +e
+    aps --report "$APS_RESULT" 2>/dev/null
+    APS_REPORT_EXIT=$?
+    set -e
+
+    if [ $APS_REPORT_EXIT -ne 0 ]; then
+        echo "ВНИМАНИЕ: aps --report завершился с кодом $APS_REPORT_EXIT"
+        echo "Попробуйте: aps-report $APS_RESULT"
+    fi
+    echo ""
+
+    # HTML-отчёт
+    echo "--- Генерация HTML-отчёта ---"
+    set +e
+    aps-report -g "$APS_RESULT" 2>/dev/null
+    APS_HTML_EXIT=$?
+    set -e
+    if [ $APS_HTML_EXIT -eq 0 ]; then
+        HTML_FILE=$(find "$RUN_DIR" -maxdepth 1 -name "*.html" 2>/dev/null | head -1)
+        if [ -n "$HTML_FILE" ]; then
+            echo "  HTML: $HTML_FILE"
+        fi
+    else
+        echo "  ВНИМАНИЕ: aps-report -g завершился с кодом $APS_HTML_EXIT"
+    fi
+    echo ""
+elif [ "$APS_MODE" = true ] && [ -z "$APS_RESULT" ]; then
+    echo "ВНИМАНИЕ: директория результатов APS не найдена."
+    echo "Проверьте: find $APS_RESULT_DIR -type d"
+    echo ""
+fi
+
+# ── Вывод лога iso3dfd (для всех режимов) ───────────────────
+echo "--- Вывод iso3dfd (timing) ---"
+grep -E "Grid Sizes|time|throughput|flops|bytes|Memory Usage" "${RUN_DIR}/log.iso3dfd" 2>/dev/null || echo "(метрики не найдены в логе)"
+echo ""
+
+# ── Итоговый блок ──────────────────────────────────────────
+echo "═══════════════════════════════════════════════════════════"
+echo "  Скрипт завершён."
+echo "  Директория запуска: ${RUN_DIR}/"
+echo "    Лог iso3dfd:      ${RUN_DIR}/log.iso3dfd"
+echo "  Замеры (общий):     log.timing  ← дописывается, не стирается"
+if [ "$PROFILE" = true ] && [ -n "$VTUNE_ACTUAL" ]; then
+    echo "  Результаты VTune:   $VTUNE_ACTUAL"
+    echo "  Открыть в GUI:      vtune-gui $VTUNE_ACTUAL"
+fi
+if [ "$APS_MODE" = true ] && [ -n "$APS_RESULT" ]; then
+    echo "  Результаты APS:     $APS_RESULT"
+    echo "  HTML-отчёт:         см. *.html в ${RUN_DIR}/"
+fi
+echo "═══════════════════════════════════════════════════════════"

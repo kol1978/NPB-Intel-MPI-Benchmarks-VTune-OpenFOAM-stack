@@ -1,6 +1,6 @@
 src/CMakeFiles/iso3dfd.dir/utils.cpp.o: \
-  /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src/utils.cpp \
-  /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/src/../include/iso3dfd.h \
+  /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src/utils.cpp \
+  /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/src/../include/iso3dfd.h \
   /opt/intel/oneapi/compiler/2026.1/bin/compiler/../../opt/compiler/include/omp.h \
   /opt/intel/oneapi/compiler/2026.1/lib/clang/22/include/stddef.h \
   /opt/intel/oneapi/compiler/2026.1/lib/clang/22/include/__stddef_header_macro.h \

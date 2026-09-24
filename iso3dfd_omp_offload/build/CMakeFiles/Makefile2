@@ -54,10 +54,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload
+CMAKE_SOURCE_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build
+CMAKE_BINARY_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build
 
 #=============================================================================
 # Directory level rules for the build root directory
@@ -105,14 +105,14 @@ src/clean: src/CMakeFiles/run.dir/clean
 src/CMakeFiles/iso3dfd.dir/all:
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/iso3dfd.dir/build.make src/CMakeFiles/iso3dfd.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/iso3dfd.dir/build.make src/CMakeFiles/iso3dfd.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles --progress-num=1,2,3 "Built target iso3dfd"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles --progress-num=1,2,3 "Built target iso3dfd"
 .PHONY : src/CMakeFiles/iso3dfd.dir/all
 
 # Build rule for subdir invocation for target.
 src/CMakeFiles/iso3dfd.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles 3
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles 3
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/iso3dfd.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles 0
 .PHONY : src/CMakeFiles/iso3dfd.dir/rule
 
 # Convenience name for target.
@@ -122,7 +122,7 @@ iso3dfd: src/CMakeFiles/iso3dfd.dir/rule
 # codegen rule for target.
 src/CMakeFiles/iso3dfd.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/iso3dfd.dir/build.make src/CMakeFiles/iso3dfd.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles --progress-num=1,2,3 "Finished codegen for target iso3dfd"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles --progress-num=1,2,3 "Finished codegen for target iso3dfd"
 .PHONY : src/CMakeFiles/iso3dfd.dir/codegen
 
 # clean rule for target.
@@ -137,14 +137,14 @@ src/CMakeFiles/iso3dfd.dir/clean:
 src/CMakeFiles/run.dir/all: src/CMakeFiles/iso3dfd.dir/all
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/run.dir/build.make src/CMakeFiles/run.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/run.dir/build.make src/CMakeFiles/run.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles --progress-num= "Built target run"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles --progress-num= "Built target run"
 .PHONY : src/CMakeFiles/run.dir/all
 
 # Build rule for subdir invocation for target.
 src/CMakeFiles/run.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles 3
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles 3
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/run.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles 0
 .PHONY : src/CMakeFiles/run.dir/rule
 
 # Convenience name for target.
@@ -154,7 +154,7 @@ run: src/CMakeFiles/run.dir/rule
 # codegen rule for target.
 src/CMakeFiles/run.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/run.dir/build.make src/CMakeFiles/run.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/CMakeFiles --progress-num= "Finished codegen for target run"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/CMakeFiles --progress-num= "Finished codegen for target run"
 .PHONY : src/CMakeFiles/run.dir/codegen
 
 # clean rule for target.
