@@ -1,6 +1,6 @@
 # V&V для CFD: обновлённые пороги и метрики после анализа fine-mesh эксперимента
 # Исходные кейсы для тестирования:
-[a forward step](https://github.com/mkraposhin/VnV/tree/main/ForwardStep)
+[ForwardStep](https://github.com/mkraposhin/VnV/tree/main/ForwardStep)
 
 ## Контекст
 
