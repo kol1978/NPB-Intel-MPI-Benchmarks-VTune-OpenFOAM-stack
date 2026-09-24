@@ -1,0 +1,1 @@
+/opt/intel/oneapi/compiler/2026.1/bin/icpx  -fiopenmp -std=c++17 -fopenmp-targets=spir64 -O3 -D__STRICT_ANSI__  -DNO_OFFLOAD -O2 -g -DNDEBUG -Wl,--dependency-file=CMakeFiles/iso3dfd.dir/link.d CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o CMakeFiles/iso3dfd.dir/utils.cpp.o -o iso3dfd

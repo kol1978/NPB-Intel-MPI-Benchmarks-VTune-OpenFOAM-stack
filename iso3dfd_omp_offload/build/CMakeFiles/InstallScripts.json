@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/cmake_install.cmake",
+		"/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build/src/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

@@ -1,0 +1,15 @@
+ 
+cd ~/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload
+
+# Чистим in-source артефакты в корне
+rm -f CMakeCache.txt
+rm -rf CMakeFiles/
+
+# Чистим build
+rm -rf build/CMakeCache.txt build/CMakeFiles/
+
+# Заново — из build/
+cd build
+export PATH=/opt/intel/oneapi/compiler/2026.1/bin:$PATH
+cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DNO_OFFLOAD=1 -DVERIFY_RESULTS=0 ..
+make -j$(nproc)
