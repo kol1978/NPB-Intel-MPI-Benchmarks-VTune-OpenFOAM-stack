@@ -1,0 +1,298 @@
+#!/bin/bash
+# ─────────────────────────────────────────────────────────
+#  iso3dfd_omp_offload — CPU-only (NO_OFFLOAD=1)
+#  Запуск:  ./runIso3dfd
+#
+#  Скрипт спросит: профилировать или нет.
+#  Каждый запуск создаёт уникальную папку в формате:
+#    run_iso3dfd_<grid>_<YYYY-MM-DD_HH-MM-SS>/
+#  log.timing — в корне, накапливает замеры (не удаляется!)
+# ─────────────────────────────────────────────────────────
+
+set -eo pipefail
+
+# ── Запуск из директории скрипта ──────────────────────────
+cd "${0%/*}" || { echo "ОШИБКА: не могу перейти в директорию скрипта"; exit 1; }
+
+# ── Путь к бинарнику ──────────────────────────────────────
+BINARY="./build/src/iso3dfd"
+
+if [ ! -x "$BINARY" ]; then
+    echo "ОШИБКА: бинарник $BINARY не найден или не исполняемый."
+    echo "Соберите проект:"
+    echo "  cd build && cmake -DNO_OFFLOAD=1 -DVERIFY_RESULTS=0 .. && make -j\$(nproc)"
+    exit 1
+fi
+
+# ── Параметры запуска (по умолчанию из документации Intel) ─
+# Формат: n1 n2 n3 nThreads_x nThreads_y nThreads_z iterations
+N1=256
+N2=256
+N3=256
+BLK_X=32
+BLK_Y=8
+BLK_Z=1
+ITERATIONS=100
+
+# ── Число OpenMP-потоков (логические ядра CPU) ────────────
+OMP_THREADS=${OMP_THREADS:-$(nproc)}
+export OMP_NUM_THREADS=$OMP_THREADS
+
+# ── Проверка окружения oneAPI (компилятор в PATH) ────────
+if ! command -v icpx &>/dev/null; then
+    echo "ВНИМАНИЕ: icpx не найден в PATH."
+    echo "Выполните: source /opt/intel/oneapi/setvars.sh"
+    echo "Продолжаю — бинарник уже собран, окружение нужно только для VTune."
+    echo ""
+fi
+
+# ── Интерактивный выбор режима ────────────────────────────
+echo "═══════════════════════════════════════════════════════════"
+echo "  iso3dfd_omp_offload — CPU-only (NO_OFFLOAD=1)"
+echo "  Grid:  $N1 x $N2 x $N3"
+echo "  Block: $BLK_X x $BLK_Y x $BLK_Z"
+echo "  Iterations: $ITERATIONS"
+echo "  OMP_NUM_THREADS: $OMP_THREADS"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+echo "  Режим запуска:"
+echo "    1) Чистый замер (без профилирования) — точное время"
+echo "    2) С профилированием VTune — CPU hotspots"
+echo ""
+read -p "  Выберите [1-2]: " MODE
+
+case "$MODE" in
+    1) PROFILE=false ;;
+    2) PROFILE=true  ;;
+    *)
+        echo "Неверный выбор. По умолчанию: чистый замер."
+        PROFILE=false
+        ;;
+esac
+
+echo ""
+
+# ── Уникальная директория для этого запуска ────────────────
+TIMESTAMP_HUMAN=$(date +"%Y-%m-%d_%H-%M-%S")
+TIMESTAMP_SHORT=$(date +%Y%m%d_%H%M%S)
+
+GRID_TAG="${N1}x${N2}x${N3}_b${BLK_X}x${BLK_Y}x${BLK_Z}_i${ITERATIONS}_t${OMP_THREADS}"
+
+if [ "$PROFILE" = true ]; then
+    RUN_DIR="run_iso3dfd_prof_${GRID_TAG}_${TIMESTAMP_HUMAN}"
+else
+    RUN_DIR="run_iso3dfd_${GRID_TAG}_${TIMESTAMP_HUMAN}"
+fi
+mkdir -p "$RUN_DIR"
+
+echo "═══════════════════════════════════════════════════════════"
+echo "  Директория запуска: $RUN_DIR/"
+if [ "$PROFILE" = true ]; then
+    echo "  Профилирование: VTune hotspots (CPU, sw sampling)"
+else
+    echo "  Профилирование: отключено (чистый замер)"
+fi
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+
+# ── Очистка зависших процессов ────────────────────────────
+if pgrep -f "iso3dfd" >/dev/null 2>&1; then
+    echo "--- Убийство зависших процессов iso3dfd ---"
+    pkill -9 -f "iso3dfd" 2>/dev/null || true
+    sleep 1
+fi
+echo ""
+
+# ── Подготовка к профилированию (если выбрано) ────────────
+VTUNE_RESULT=""
+VTUNE_ACTUAL=""
+
+if [ "$PROFILE" = true ]; then
+    VTUNE_HOME="/opt/intel/oneapi/vtune/latest"
+    if [ ! -f "$VTUNE_HOME/vtune-vars.sh" ]; then
+        echo "ОШИБКА: VTune не найден в $VTUNE_HOME"
+        echo "Установите Intel oneAPI Base Toolkit или выберите режим 1 (без профилирования)"
+        exit 1
+    fi
+    source "$VTUNE_HOME/vtune-vars.sh"
+
+    # ── ptrace_scope для VTune ─────────────────────────────
+    PTRACE_ORIG=$(cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || echo "")
+    if [ -n "$PTRACE_ORIG" ] && [ "$PTRACE_ORIG" != "0" ]; then
+        echo "--- Включение ptrace_scope=0 (для VTune) ---"
+        if ! sudo sysctl -w kernel.yama.ptrace_scope=0 2>/dev/null; then
+            echo "ВНИМАНИЕ: не удалось установить ptrace_scope=0"
+            echo "VTune может не получить доступ к процессам."
+            echo "Установите вручную: sudo sysctl -w kernel.yama.ptrace_scope=0"
+        fi
+
+        restore_ptrace() {
+            if [ -n "$PTRACE_ORIG" ]; then
+                echo "--- Восстановление ptrace_scope=$PTRACE_ORIG ---"
+                sudo sysctl -w kernel.yama.ptrace_scope=$PTRACE_ORIG 2>/dev/null || true
+            fi
+        }
+        trap restore_ptrace EXIT
+    fi
+
+    VTUNE_RESULT="${RUN_DIR}/vtune_iso3dfd_${TIMESTAMP_SHORT}"
+    echo "--- VTune: директория результатов: $VTUNE_RESULT ---"
+    echo "--- Режим: software sampling (CPU hotspots) ---"
+    echo ""
+fi
+
+# ── Замер времени через awk (не зависит от bc) ────────────
+calc_elapsed() {
+    awk "BEGIN {printf \"%.2f\", $2 - $1}"
+}
+
+# ── Аргументы для iso3dfd ──────────────────────────────────
+ARGS="$N1 $N2 $N3 $BLK_X $BLK_Y $BLK_Z $ITERATIONS"
+
+# ── Запуск iso3dfd ─────────────────────────────────────────
+echo "--- Запуск iso3dfd $ARGS ---"
+echo "--- OMP_NUM_THREADS=$OMP_NUM_THREADS ---"
+echo "--- Лог: ${RUN_DIR}/log.iso3dfd ---"
+echo ""
+
+START=$(date +%s.%N)
+
+if [ "$PROFILE" = true ]; then
+    # ── VTune CPU hotspots (один процесс, без MPI) ──
+    # -knob sampling-mode=sw: software sampling (SIGPROF)
+    # -finalization-mode=deferred: финализация отдельно
+    # -quiet: подавляет диагностический вывод VTune
+    set +e
+    vtune -quiet -collect hotspots \
+        -knob sampling-mode=sw \
+        -knob enable-characterization-insights=false \
+        -finalization-mode=deferred \
+        -r "$VTUNE_RESULT" \
+        -- "$BINARY" $ARGS \
+        > "${RUN_DIR}/log.iso3dfd" 2>&1
+    VTUNE_EXIT=$?
+    set -e
+
+    if [ ! -s "${RUN_DIR}/log.iso3dfd" ]; then
+        echo "ОШИБКА: лог пуст — запуск не состоялся."
+        exit 1
+    fi
+
+    VTUNE_ACTUAL=$(find . -maxdepth 2 -type d -name "vtune_iso3dfd_${TIMESTAMP_SHORT}*" | head -1 | sed 's|^\./||')
+    if [ -z "$VTUNE_ACTUAL" ]; then
+        echo "ВНИМАНИЕ: директория результатов VTune не найдена."
+        echo "Проверьте: find . -name 'vtune_iso3dfd_${TIMESTAMP_SHORT}*' -type d"
+    fi
+
+else
+    # ── Чистый запуск (без профилировщика) ──
+    set +e
+    "$BINARY" $ARGS > "${RUN_DIR}/log.iso3dfd" 2>&1
+    RUN_EXIT=$?
+    set -e
+
+    if [ $RUN_EXIT -ne 0 ]; then
+        echo "ВНИМАНИЕ: iso3dfd завершился с кодом $RUN_EXIT"
+        echo "Смотрите лог: ${RUN_DIR}/log.iso3dfd"
+    fi
+fi
+
+END=$(date +%s.%N)
+ELAPSED=$(calc_elapsed "$START" "$END")
+
+# ── Проверка успешности (iso3dfd печатает "Kernel time" или timing-строки) ─
+RUN_OK=false
+if [ -s "${RUN_DIR}/log.iso3dfd" ]; then
+    # iso3dfd выводит итоговые timing-строки при успешном завершении
+    if grep -qi "time" "${RUN_DIR}/log.iso3dfd" 2>/dev/null && \
+       ! grep -qi "error" "${RUN_DIR}/log.iso3dfd" 2>/dev/null; then
+        RUN_OK=true
+    fi
+    # Дополнительная проверка: процесс завершился с кодом 0
+    if [ "$PROFILE" = false ] && [ $RUN_EXIT -eq 0 ]; then
+        RUN_OK=true
+    fi
+fi
+
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+if [ "$RUN_OK" = true ]; then
+    if [ "$PROFILE" = true ]; then
+        echo "  iso3dfd + VTune (collection): ${ELAPSED} сек"
+        echo "  Включает overhead SW sampling (~2x для коротких запусков)"
+    else
+        echo "  iso3dfd (чистый): ${ELAPSED} сек"
+    fi
+    echo "=== iso3dfd ${GRID_TAG} (${ELAPSED} sec, profile=${PROFILE}, dir=${RUN_DIR}) ===" >> log.timing
+else
+    echo "  ВНИМАНИЕ: iso3dfd не завершился корректно"
+    echo "  Время: ${ELAPSED} сек (результат может быть некорректным)"
+    echo "=== iso3dfd ${GRID_TAG} (FAILED, ${ELAPSED} sec, profile=${PROFILE}, dir=${RUN_DIR}) ===" >> log.timing
+fi
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+
+# ── Вывод timing-строк из лога iso3dfd ─────────────────────
+if [ "$RUN_OK" = true ] && [ -s "${RUN_DIR}/log.iso3dfd" ]; then
+    echo "--- Вывод iso3dfd (timing) ---"
+    # iso3dfd печатает: Kernel time, Total Time, LUP/s, Flops, etc.
+    grep -E -i "(time|flop|lup|gflop|bandwidth|performed)" "${RUN_DIR}/log.iso3dfd" 2>/dev/null | head -20 || true
+    echo ""
+fi
+
+# ── Финализация VTune + отчёты ────────────────────────────
+if [ "$PROFILE" = true ] && [ -n "$VTUNE_ACTUAL" ]; then
+    echo "--- Финализация VTune ---"
+    FINAL_START=$(date +%s.%N)
+    set +e
+    vtune -finalize -r "$VTUNE_ACTUAL" 2>&1 | tail -3
+    FINAL_EXIT=$?
+    set -e
+    FINAL_END=$(date +%s.%N)
+    FINAL_ELAPSED=$(calc_elapsed "$FINAL_START" "$FINAL_END")
+    echo "  Финализация: ${FINAL_ELAPSED} сек"
+    echo ""
+
+    if [ $FINAL_EXIT -ne 0 ]; then
+        echo "ВНИМАНИЕ: финализация завершилась с кодом $FINAL_EXIT"
+        echo "Откройте в GUI: vtune-gui $VTUNE_ACTUAL"
+        echo ""
+    else
+        echo "--- Сводный отчёт (summary) ---"
+        set +e
+        vtune -report summary -r "$VTUNE_ACTUAL" 2>/dev/null
+        SUMMARY_EXIT=$?
+        set -e
+        if [ $SUMMARY_EXIT -ne 0 ]; then
+            echo "Не удалось получить сводный отчёт."
+            echo "Откройте в GUI: vtune-gui $VTUNE_ACTUAL"
+        fi
+        echo ""
+
+        echo "--- Топ-10 горячих точек ---"
+        set +e
+        vtune -report hotspots -r "$VTUNE_ACTUAL" -limit 10
+        HOTSPOTS_EXIT=$?
+        set -e
+        if [ $HOTSPOTS_EXIT -ne 0 ]; then
+            echo ""
+            echo "Стандартный отчёт не сработал. Доступные колонки:"
+            vtune -report hotspots -r "$VTUNE_ACTUAL" column=? 2>/dev/null || true
+            echo ""
+            echo "Откройте в GUI: vtune-gui $VTUNE_ACTUAL"
+        fi
+        echo ""
+    fi
+fi
+
+# ── Итоговый блок ──────────────────────────────────────────
+echo "═══════════════════════════════════════════════════════════"
+echo "  Скрипт завершён."
+echo "  Директория запуска: $RUN_DIR/"
+echo "    Лог iso3dfd:      ${RUN_DIR}/log.iso3dfd"
+echo "  Замеры (общий):     log.timing  ← дописывается, не стирается"
+if [ "$PROFILE" = true ] && [ -n "$VTUNE_ACTUAL" ]; then
+    echo "  Результаты VTune:   $VTUNE_ACTUAL"
+    echo "  Открыть в GUI:      vtune-gui $VTUNE_ACTUAL"
+fi
+echo "═══════════════════════════════════════════════════════════"

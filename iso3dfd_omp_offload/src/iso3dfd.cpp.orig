@@ -437,7 +437,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-#ifndef NO_OFFLOAD
   // Check for available omp offload capable device
   int num_devices = omp_get_num_devices();
   if (num_devices <= 0) {
@@ -446,7 +445,6 @@ int main(int argc, char *argv[]) {
     Usage(argv[0]);
     return 1;
   }
-#endif
 
   auto nsize = n1 * n2 * n3;
 

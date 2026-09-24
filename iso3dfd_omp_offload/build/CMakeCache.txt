@@ -221,7 +221,7 @@ CMAKE_TAPI:FILEPATH=CMAKE_TAPI-NOTFOUND
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
 //Run on CPU host only
-NO_OFFLOAD:BOOL=1
+NO_OFFLOAD:BOOL=ON
 
 //Select Optimized target code - version 1
 USE_OPT1:BOOL=OFF
@@ -233,7 +233,7 @@ USE_OPT2:BOOL=OFF
 USE_OPT3:BOOL=OFF
 
 //Use Results Validation
-VERIFY_RESULTS:BOOL=0
+VERIFY_RESULTS:BOOL=OFF
 
 //Value Computed by CMake
 iso3dfd_omp_offload_BINARY_DIR:STATIC=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/oneAPI-samples/DirectProgramming/C++/StructuredGrids/iso3dfd_omp_offload/build

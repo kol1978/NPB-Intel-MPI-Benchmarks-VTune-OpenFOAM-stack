@@ -2,9 +2,8 @@ iso3dfd: \
   /lib/x86_64-linux-gnu/Scrt1.o \
   /lib/x86_64-linux-gnu/crti.o \
   /usr/lib/gcc/x86_64-linux-gnu/14/crtbeginS.o \
-  /tmp/icpx-72dc4e5a64/iso3dfd-b4caff.o \
-  /tmp/icpx-72dc4e5a64/utils-a480ff.o \
-  /tmp/icpx-72dc4e5a64/iso3dfd-wrapper-12d597.o \
+  CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o \
+  CMakeFiles/iso3dfd.dir/utils.cpp.o \
   /opt/intel/oneapi/compiler/2026.1/bin/compiler/../../lib/libsvml.a \
   /opt/intel/oneapi/compiler/2026.1/bin/compiler/../../lib/libirng.a \
   /usr/lib/gcc/x86_64-linux-gnu/14/libstdc++.so \
@@ -23,7 +22,6 @@ iso3dfd: \
   /opt/intel/oneapi/compiler/2026.1/bin/compiler/../../lib/libirc.a \
   /lib/x86_64-linux-gnu/libdl.a \
   /opt/intel/oneapi/compiler/2026.1/bin/compiler/../../lib/libiomp5.so \
-  /opt/intel/oneapi/compiler/2026.1/bin/compiler/../../lib/libomptarget.so \
   /usr/lib/gcc/x86_64-linux-gnu/14/libgcc_s.so \
   /usr/lib/gcc/x86_64-linux-gnu/14/libgcc_s.so \
   /usr/lib/gcc/x86_64-linux-gnu/14/libgcc_s.so \
@@ -49,13 +47,7 @@ iso3dfd: \
   /lib64/ld-linux-x86-64.so.2 \
   /lib/x86_64-linux-gnu/librt.so.1 \
   /lib/x86_64-linux-gnu/libdl.so.2 \
-  /lib/x86_64-linux-gnu/libpthread.so.0 \
-  /opt/intel/oneapi/compiler/2025.3/lib/libimf.so \
-  /lib/x86_64-linux-gnu/libz.so.1 \
-  /opt/intel/oneapi/compiler/2026.1/bin/compiler/../../lib/libur_loader.so.0 \
-  /opt/intel/oneapi/compiler/2025.3/lib/libsvml.so \
-  /opt/intel/oneapi/compiler/2025.3/lib/libirng.so \
-  /opt/intel/oneapi/compiler/2025.3/lib/libintlc.so.5
+  /lib/x86_64-linux-gnu/libpthread.so.0
 
 /lib/x86_64-linux-gnu/Scrt1.o:
 
@@ -63,11 +55,9 @@ iso3dfd: \
 
 /usr/lib/gcc/x86_64-linux-gnu/14/crtbeginS.o:
 
-/tmp/icpx-72dc4e5a64/iso3dfd-b4caff.o:
+CMakeFiles/iso3dfd.dir/iso3dfd.cpp.o:
 
-/tmp/icpx-72dc4e5a64/utils-a480ff.o:
-
-/tmp/icpx-72dc4e5a64/iso3dfd-wrapper-12d597.o:
+CMakeFiles/iso3dfd.dir/utils.cpp.o:
 
 /opt/intel/oneapi/compiler/2026.1/bin/compiler/../../lib/libsvml.a:
 
@@ -104,8 +94,6 @@ iso3dfd: \
 /lib/x86_64-linux-gnu/libdl.a:
 
 /opt/intel/oneapi/compiler/2026.1/bin/compiler/../../lib/libiomp5.so:
-
-/opt/intel/oneapi/compiler/2026.1/bin/compiler/../../lib/libomptarget.so:
 
 /usr/lib/gcc/x86_64-linux-gnu/14/libgcc_s.so:
 
@@ -158,15 +146,3 @@ iso3dfd: \
 /lib/x86_64-linux-gnu/libdl.so.2:
 
 /lib/x86_64-linux-gnu/libpthread.so.0:
-
-/opt/intel/oneapi/compiler/2025.3/lib/libimf.so:
-
-/lib/x86_64-linux-gnu/libz.so.1:
-
-/opt/intel/oneapi/compiler/2026.1/bin/compiler/../../lib/libur_loader.so.0:
-
-/opt/intel/oneapi/compiler/2025.3/lib/libsvml.so:
-
-/opt/intel/oneapi/compiler/2025.3/lib/libirng.so:
-
-/opt/intel/oneapi/compiler/2025.3/lib/libintlc.so.5:

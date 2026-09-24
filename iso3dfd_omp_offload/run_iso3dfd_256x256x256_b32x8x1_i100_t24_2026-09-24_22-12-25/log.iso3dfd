@@ -1,0 +1,12 @@
+--------------------------------------
+ No OpenMP Offload device found
+--------------------------------------
+ Incorrect parameters 
+ Usage: ./build/src/iso3dfd n1 n2 n3 n1_block n2_block n3_block Iterations
+
+ n1 n2 n3      			: Grid sizes for the stencil
+ n1_block n2_block n3_block     : cache block sizes for CPU
+ 	       			: TILE sizes for OMP Offload
+ Iterations    			: No. of timesteps.
+--------------------------------------
+--------------------------------------

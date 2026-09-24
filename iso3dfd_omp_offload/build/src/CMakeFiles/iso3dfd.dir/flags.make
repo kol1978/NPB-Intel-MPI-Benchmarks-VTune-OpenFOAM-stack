@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = 
 
-CXX_FLAGS =  -fiopenmp -std=c++17 -fopenmp-targets=spir64 -O3 -D__STRICT_ANSI__  -DNO_OFFLOAD -O2 -g -DNDEBUG
+CXX_FLAGS =  -fiopenmp -std=c++17 -O3 -D__STRICT_ANSI__  -DNO_OFFLOAD -O2 -g -DNDEBUG
 

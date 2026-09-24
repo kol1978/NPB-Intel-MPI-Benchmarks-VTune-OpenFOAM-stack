@@ -5,10 +5,7 @@ OPTION(USE_OPT3 "Select Optimized target code - version 3" OFF)
 OPTION(NO_OFFLOAD "Run on CPU host only" OFF)
 
 set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fiopenmp -std=c++17 -O3 -D__STRICT_ANSI__ ")
-if(NOT NO_OFFLOAD)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp-targets=spir64")
-endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fiopenmp -std=c++17 -fopenmp-targets=spir64 -O3 -D__STRICT_ANSI__ ")
 
 set(SOURCES iso3dfd.cpp utils.cpp)
 
