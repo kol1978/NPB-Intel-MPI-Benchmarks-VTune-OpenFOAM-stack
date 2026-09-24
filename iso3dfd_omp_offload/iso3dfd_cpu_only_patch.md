@@ -208,11 +208,30 @@ grep NO_OFFLOAD CMakeCache.txt
 OMP_NUM_THREADS=$(nproc) ./src/iso3dfd 256 256 256 16 8 64 100
 
 # Ограничить число потоков
-OMP_NUM_THREADS=12 ./src/iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=1  ./iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=2  ./iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=4  ./iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=6  ./iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=8  ./iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=10 ./iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=12 ./iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=14 ./iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=16 ./iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=20 ./iso3dfd 256 256 256 16 8 64 100
+OMP_NUM_THREADS=24 ./iso3dfd 256 256 256 16 8 64 100
 
 # Привязка к одному NUMA-узлу
-numactl --membind=0 --cpunodebind=0 \
-    OMP_NUM_THREADS=12 ./src/iso3dfd 256 256 256 16 8 64 100
+## 12 потоков без привязки (ОС сама размещает)
+OMP_NUM_THREADS=12 ./iso3dfd 256 256 256 16 8 64 100
+
+## 12 потоков с привязкой к сокету 0
+OMP_NUM_THREADS=12 numactl --membind=0 --cpunodebind=0 ./iso3dfd 256 256 256 16 8 64 100
+
+## 24 потока без привязки
+OMP_NUM_THREADS=24 ./iso3dfd 256 256 256 16 8 64 100
+
+## 24 потока с interleave
+OMP_NUM_THREADS=24 numactl --interleave=0,1 ./iso3dfd 256 256 256 16 8 64 100
 ```
 
 ---
