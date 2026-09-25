@@ -1,0 +1,100 @@
+1 [130003245359808] INFO perfrun.launcher <> - Launcher main begin
+2 [130003245359808] INFO perfrun.launcher <> - MessageCatalogInit finished
+2 [130003245359808] INFO perfrun.launcher <> - Launcher instance created
+2 [130003245359808] INFO perfrun.launcher <> - argc = 7; cmdline = /opt/intel/oneapi/vtune/2026.4/bin64/amplxe-runss --ui-output-format xml --ui-output-fd 17 --option-file /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv/config/runss.options.6 
+56 [130003245359808] INFO perfrun.perfcollector <> - SEP tool path: /opt/intel/oneapi/vtune/2026.4/bin64/sep
+65 [130003245359808] INFO perfrun.launcher <> - create msngr2::ICliToolContext
+65 [130003245359808] INFO perfrun.launcher <> - create file finder object
+65 [130003245359808] INFO perfrun.launcher <> - create a result directory: pattern = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv pid = 4294967295
+67 [130003245359808] INFO perfrun.sdk <> - checked that the directory /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv is a local directory
+67 [130003245359808] INFO perfrun.sdk <> - the directory /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv is a local directory with FS type ID 61267
+67 [130003245359808] INFO perfrun.launcher <> - create data directory = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv/data.6
+67 [130003245359808] INFO perfrun.launcher <> - Creating the master collection flag
+67 [130003245359808] INFO perfrun.launcher <> - Done creating the master collection flag
+70 [130003085813440] INFO perfrun.launcher <> - plugin [remoteplug] was disabled because it doesn't support the given collection type.
+70 [130003085813440] INFO perfrun.sdk <> - Allocating TMU :/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv/data.6/systemcollector-28060-kol-serv.sc
+70 [130003085813440] INFO perfrun.launcher <> - plugin [vdso] was disabled because it doesn't support the given collection type.
+70 [130003085813440] INFO perfrun.launcher <> - plugin [ptracecollector] was disabled because it doesn't support the given collection type.
+70 [130003085813440] INFO perfrun.launcher <> - plugin [gpu] was disabled because it doesn't support the given collection type.
+70 [130003085813440] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+70 [130003085813440] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+70 [130003085813440] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+70 [130003085813440] INFO perfrun.mrte <> - system-wide mode is 0
+71 [130003085813440] INFO perfrun.mrte <> - Getting  mrte profiling environment ...
+80 [130003085813440] INFO perfrun.mrte <> - INTEL_MRTE_DATA_DIR=/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv/data.6
+80 [130003085813440] INFO perfrun.mrte <> - INTEL_MRTE_HOST_NAME=kol-serv
+80 [130003085813440] INFO perfrun.mrte <> - JAVA_TOOL_OPTIONS=-agentlib:amplxe_samplingmrte_javaprof_1.0 -Dsun.boot.library.path=/opt/intel/oneapi/vtune/2026.4/lib64/runtime:/opt/intel/oneapi/vtune/2026.4/lib64/runtime
+80 [130003085813440] INFO perfrun.mrte <> - LD_LIBRARY_PATH=/opt/intel/oneapi/vtune/2026.4/lib64/runtime:/opt/intel/oneapi/vtune/2026.4/lib64/runtime:/opt/intel/oneapi/tcm/1.5/lib:/opt/intel/oneapi/umf/1.1/lib:/opt/intel/oneapi/tcm/1.5/env/../lib:/opt/intel/oneapi/tbb/2023.1/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/pti/1.1/lib:/opt/intel/oneapi/mpi/2021.18/opt/mpi/libfabric/lib:/opt/intel/oneapi/mpi/2021.18/lib:/opt/intel/oneapi/mkl/2026.1/lib:/opt/intel/oneapi/ishmem/1.6/lib:/opt/intel/oneapi/ippcp/2026.0/lib/:/opt/intel/oneapi/ipp/2026.0/lib:/opt/intel/oneapi/dnnl/2026.0/lib:/opt/intel/oneapi/debugger/2026.1/opt/debugger/lib:/opt/intel/oneapi/dal/2026.1/lib:/opt/intel/oneapi/compiler/2025.3/opt/compiler/lib:/opt/intel/oneapi/compiler/2025.3/lib:/opt/intel/oneapi/ccl/2022.1/lib/
+80 [130003085813440] INFO perfrun.mrte <> - CORECLR_ENABLE_PROFILING=1
+80 [130003085813440] INFO perfrun.mrte <> - CORECLR_PROFILER={AA5E4821-E3B1-479c-B7FF-5AD047D22CED}
+80 [130003085813440] INFO perfrun.mrte <> - CORECLR_PROFILER_PATH=/opt/intel/oneapi/vtune/2026.4/lib64/libamplxe_samplingmrte_clrprof_1.0.so
+80 [130003085813440] INFO perfrun.mrte <> - INTEL_MRTE_PROFILER_MODE=mixed
+80 [130003085813440] INFO perfrun.mrte <> - Data directory: /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv/data.6
+80 [130003085813440] INFO perfrun.mrte <> - Mrte plugin is initialized
+80 [130003085813440] INFO perfrun.launcher <> - plugin [emon] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [cuscol] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [stdsrc] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [sep] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [vtsspp] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [perf] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [aoclprofile] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.tpss <> - initialize tpss controller
+81 [130003085813440] INFO perfrun.tpss <> - configure collection mode: value = cpu:stack
+81 [130003085813440] INFO perfrun.tpss <> - default obj-size-min=1024
+81 [130003085813440] INFO perfrun.tpss <> - default hash-table-size=0
+81 [130003085813440] INFO perfrun.launcher <> - plugin [media] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [parallelfs] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [power] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [l0_metrics] was disabled because it doesn't support the given collection type.
+81 [130003085813440] INFO perfrun.launcher <> - plugin [stall_reasons] was disabled because it doesn't support the given collection type.
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: LD_LIBRARY_PATH = /opt/intel/oneapi/vtune/2026.4/lib64/runtime:/opt/intel/oneapi/tcm/1.5/lib:/opt/intel/oneapi/umf/1.1/lib:/opt/intel/oneapi/tcm/1.5/env/../lib:/opt/intel/oneapi/tbb/2023.1/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/pti/1.1/lib:/opt/intel/oneapi/mpi/2021.18/opt/mpi/libfabric/lib:/opt/intel/oneapi/mpi/2021.18/lib:/opt/intel/oneapi/mkl/2026.1/lib:/opt/intel/oneapi/ishmem/1.6/lib:/opt/intel/oneapi/ippcp/2026.0/lib/:/opt/intel/oneapi/ipp/2026.0/lib:/opt/intel/oneapi/dnnl/2026.0/lib:/opt/intel/oneapi/debugger/2026.1/opt/debugger/lib:/opt/intel/oneapi/dal/2026.1/lib:/opt/intel/oneapi/compiler/2025.3/opt/compiler/lib:/opt/intel/oneapi/compiler/2025.3/lib:/opt/intel/oneapi/ccl/2022.1/lib/
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: INTEL_LIBITTNOTIFY64 = /opt/intel/oneapi/vtune/2026.4/lib64/runtime/libittnotify_collector.so
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: INTEL_ITTNOTIFY_GROUPS = 
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: INTEL_JIT_PROFILER64 = /opt/intel/oneapi/vtune/2026.4/lib64/runtime/libittnotify_collector.so
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: CCL_ITT_LEVEL = 1
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: ENABLE_JITPROFILING = 1
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: CL_CONFIG_USE_VTUNE = True
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: LD_PRELOAD = libittnotify_collector.so:
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: KMP_FORKJOIN_FRAMES = 0
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: KMP_FORKJOIN_FRAMES_MODE = 0
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: INTEL_MRTE_DATA_DIR = /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv/data.6
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: INTEL_MRTE_HOST_NAME = kol-serv
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: JAVA_TOOL_OPTIONS = -agentlib:amplxe_samplingmrte_javaprof_1.0 -Dsun.boot.library.path=/opt/intel/oneapi/vtune/2026.4/lib64/runtime:/opt/intel/oneapi/vtune/2026.4/lib64/runtime
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: LD_LIBRARY_PATH = /opt/intel/oneapi/vtune/2026.4/lib64/runtime:/opt/intel/oneapi/vtune/2026.4/lib64/runtime:/opt/intel/oneapi/tcm/1.5/lib:/opt/intel/oneapi/umf/1.1/lib:/opt/intel/oneapi/tcm/1.5/env/../lib:/opt/intel/oneapi/tbb/2023.1/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/pti/1.1/lib:/opt/intel/oneapi/mpi/2021.18/opt/mpi/libfabric/lib:/opt/intel/oneapi/mpi/2021.18/lib:/opt/intel/oneapi/mkl/2026.1/lib:/opt/intel/oneapi/ishmem/1.6/lib:/opt/intel/oneapi/ippcp/2026.0/lib/:/opt/intel/oneapi/ipp/2026.0/lib:/opt/intel/oneapi/dnnl/2026.0/lib:/opt/intel/oneapi/debugger/2026.1/opt/debugger/lib:/opt/intel/oneapi/dal/2026.1/lib:/opt/intel/oneapi/compiler/2025.3/opt/compiler/lib:/opt/intel/oneapi/compiler/2025.3/lib:/opt/intel/oneapi/ccl/2022.1/lib/
+81 [130003245359808] INFO perfrun.launcher <> - set environment variable: CORECLR_ENABLE_PROFILING = 1
+82 [130003245359808] INFO perfrun.launcher <> - set environment variable: CORECLR_PROFILER = {AA5E4821-E3B1-479c-B7FF-5AD047D22CED}
+82 [130003245359808] INFO perfrun.launcher <> - set environment variable: CORECLR_PROFILER_PATH = /opt/intel/oneapi/vtune/2026.4/lib64/libamplxe_samplingmrte_clrprof_1.0.so
+82 [130003245359808] INFO perfrun.launcher <> - set environment variable: INTEL_MRTE_PROFILER_MODE = mixed
+82 [130003245359808] INFO perfrun.launcher <> - RpcServer: run RPC server to handle requests
+82 [130003245359808] INFO perfrun.launcher <> - Launcher: command line to start before modification = ./iso3dfd 256 256 256 16 8 64 100
+82 [130003245359808] INFO perfrun.launcher <> - Launcher: command line to start after modification = /opt/intel/oneapi/vtune/2026.4/bin64/pin -error_file /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv/data.6/pinerr.tpsslog -detach_reattach -follow_execv -tool_load_option deepbind -t64 /opt/intel/oneapi/vtune/2026.4/lib64/libtpsstool.so -t /opt/intel/oneapi/vtune/2026.4/lib64/libtpsstool.so -server_name tpss_ipc.28060 -prd_dir /opt/intel/oneapi/vtune/2026.4 -- ./iso3dfd 256 256 256 16 8 64 100
+382 [130003245359808] INFO perfrun.launcher <> - ProcessCreator object was created
+383 [130003245359808] INFO perfrun.launcher <> - Launcher: the process was started in suspend mode
+386 [130003085813440] WARN perfrun.system <> - Folder "/var/run/libvirt/qemu/"doesn't exist, at file: vcs/perfrun1/plugins/system/src/trace_writer.cpp:804
+387 [130003085813440] INFO perfrun.itt <> - start itt controller for pid #28114
+387 [130003085813440] INFO perfrun.tpss <> - start tpss controller for pid #28114
+437 [130003245359808] INFO perfrun.launcher <> - Launcher: all plugins were started
+437 [130003245359808] INFO perfrun.launcher <> - DirectoryMonitor object was created
+437 [130003245359808] INFO perfrun.launcher <> - DirectoryMonitor: a callback was added
+437 [130003245359808] INFO perfrun.launcher <> - DirectoryMonitor was started with pingTime = 1000
+437 [130003245359808] INFO perfrun.launcher <> - DeadlineTimer is going to be constructed
+437 [130003245359808] INFO perfrun.launcher <> - DeadlineTimer: a callback was added
+438 [130003245359808] INFO perfrun.launcher <> - Launcher: resume the profiled application and  wait its termination or stop command
+26369 [130003245359808] INFO perfrun.launcher <> - Launcher: the profiled application was terminated  with exit code = 0
+26415 [130003085813440] INFO perfrun.itt <> - detach itt controller
+26415 [130003085813440] INFO perfrun.itt <> - detach itt controller done
+26415 [130003085813440] INFO perfrun.tpss <> - stop tpss controller
+26415 [130003085813440] INFO perfrun.sdk <> - De-allocating TMU: /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv/data.6/systemcollector-28060-kol-serv.sc
+26416 [130003085813440] INFO perfrun.system <> - closed the system trace file: /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv/data.6/systemcollector-28060-kol-serv.sc
+26416 [130003245359808] INFO perfrun.launcher <> - Launcher: all plugins were stopped.
+26416 [130003245359808] INFO perfrun.launcher <> - DeadlineTimer is going to be destroyed
+26416 [130003245359808] INFO perfrun.launcher <> - DeadlineTimer was destroyed
+26416 [130003245359808] INFO perfrun.launcher <> - DirectoryMonitor object was destroyed
+26416 [130003245359808] WARN perfrun.launcher <> - Stop command is ignored because it is received when collection is already stopped, at file: vcs/perfrun1/launcher/src/command_handler.cpp:226
+26416 [130003245359808] INFO perfrun.launcher <> - Application exit code: 0
+26416 [130003245359808] INFO perfrun.launcher <> - Exit code: 0

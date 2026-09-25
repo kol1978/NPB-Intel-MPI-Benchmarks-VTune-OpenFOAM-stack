@@ -1,0 +1,60 @@
+#!/bin/bash
+# run_vtune_hotspots.sh — запуск VTune hotspots с автоматическим управлением ptrace_scope
+
+set -e
+
+# ── Проверка root ──────────────────────────────────────────────
+if [ "$EUID" -ne 0 ]; then
+    echo "Ошибка: запустите через sudo: sudo ./run_vtune_hotspots.sh"
+    exit 1
+fi
+
+# ── Подключение окружения Intel oneAPI ──────────────────────────
+SETVARS="/opt/intel/oneapi/setvars.sh"
+if [ -f "$SETVARS" ]; then
+    source "$SETVARS" --force
+else
+    echo "Ошибка: $SETVARS не найден."
+    exit 1
+fi
+
+# ── Проверка, что mpirun — Intel MPI ────────────────────────────
+MPI_INFO=$(mpirun --version 2>&1 | head -5)
+echo ">>> MPI runtime:"
+echo "$MPI_INFO"
+echo
+
+if ! echo "$MPI_INFO" | grep -qi "intel"; then
+    echo "Ошибка: mpirun не от Intel MPI. Проверьте setvars.sh."
+    exit 1
+fi
+
+# ── Сохранение исходного ptrace_scope ───────────────────────────
+ORIGINAL_SCOPE=$(cat /proc/sys/kernel/yama/ptrace_scope)
+echo ">>> Исходное значение ptrace_scope: $ORIGINAL_SCOPE"
+
+# ── Функция восстановления ──────────────────────────────────────
+restore_ptrace() {
+    echo
+    echo ">>> Восстановление ptrace_scope=$ORIGINAL_SCOPE ..."
+    sysctl -w kernel.yama.ptrace_scope="$ORIGINAL_SCOPE"
+    echo "    Проверка: $(cat /proc/sys/kernel/yama/ptrace_scope)"
+}
+trap restore_ptrace EXIT
+
+# ── Включение ptrace_scope=0 ────────────────────────────────────
+echo ">>> Включение ptrace_scope=0 ..."
+sysctl -w kernel.yama.ptrace_scope=0
+echo "    Проверка: $(cat /proc/sys/kernel/yama/ptrace_scope)"
+echo
+
+# ── Запуск VTune ────────────────────────────────────────────────
+echo ">>> Запуск VTune hotspots ..."
+CMD="mpirun -n 12 -l vtune -quiet -collect hotspots -knob sampling-mode=sw -knob enable-characterization-insights=false -trace-mpi -result-dir vtune_hotspots_mpi -- ./iso3dfd 256 256 256 16 8 64 100"
+echo "    Команда: $CMD"
+echo
+
+$CMD
+EXIT_CODE=$?
+echo
+echo ">>> VTune завершился с кодом: $EXIT_CODE"

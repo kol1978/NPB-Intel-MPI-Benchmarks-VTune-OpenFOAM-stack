@@ -1,0 +1,266 @@
+#!/bin/bash
+# analyze_vtune.sh — анализ VTune через CSV (tab-separated)
+
+RESULT_DIR="${1:-vtune_hotspots_mpi.kol-serv}"
+
+if [ ! -d "$RESULT_DIR" ]; then
+    echo "Ошибка: директория '$RESULT_DIR' не найдена."
+    ls -d vtune_* 2>/dev/null || echo "  (ничего не найдено)"
+    exit 1
+fi
+
+if ! command -v vtune &>/dev/null; then
+    source /opt/intel/oneapi/setvars.sh --force 2>/dev/null
+fi
+
+if ! command -v vtune &>/dev/null; then
+    echo "Ошибка: vtune недоступен."
+    exit 1
+fi
+
+# ── Создание CSV-файлов ──────────────────────────────────
+CSV_SUMMARY="vtune_summary.csv"
+CSV_RANKS="vtune_ranks.csv"
+CSV_HOTSPOTS="vtune_hotspots.csv"
+
+echo "Создание CSV-отчётов..."
+
+vtune -report summary -r "$RESULT_DIR" -format=csv -report-output "$CSV_SUMMARY" 2>/dev/null
+vtune -report hotspots -r "$RESULT_DIR" -group-by process -format=csv -report-output "$CSV_RANKS" 2>/dev/null
+vtune -report hotspots -r "$RESULT_DIR" -format=csv -report-output "$CSV_HOTSPOTS" 2>/dev/null
+
+if [ ! -s "$CSV_SUMMARY" ]; then
+    echo "Ошибка: CSV-файл сводки не создан."
+    echo "Проверьте права: sudo chown -R \$USER:\$USER $RESULT_DIR"
+    exit 1
+fi
+
+if [ ! -s "$CSV_RANKS" ]; then
+    echo "Ошибка: CSV-файл рангов не создан."
+    exit 1
+fi
+
+echo "Создано: $CSV_SUMMARY, $CSV_RANKS, $CSV_HOTSPOTS"
+echo ""
+
+# ── 1. СВОДКА ───────────────────────────────────────────
+echo "=============================================="
+echo "  1. СВОДКА ПО ПРОИЗВОДИТЕЛЬНОСТИ"
+echo "=============================================="
+echo ""
+
+awk -F'\t' '
+/Elapsed Time/  { elapsed = $3 }
+/^1\tCPU Time/   { cpu = $3 }
+/Effective Time/ { eff = $3 }
+/^2\tSpin Time/  { spin = $3 }
+/Overhead Time/  { overhead = $3 }
+/Total Thread Count/ { threads = $3 }
+
+END {
+    printf "%-30s %-20s %s\n", "Метрика", "Значение", "Интерпретация"
+    printf "%-30s %-20s %s\n", "------------------------------", "--------------------", "--------------------"
+    printf "%-30s %-20s %s\n", "Elapsed Time", elapsed " с", "Реальное время выполнения"
+    printf "%-30s %-20s %s\n", "CPU Time", cpu " с", "Суммарное по всем потокам"
+
+    if (cpu > 0) {
+        eff_pct = eff / cpu * 100
+        spin_pct = spin / cpu * 100
+        oh_pct = overhead / cpu * 100
+        printf "%-30s %-20s %.1f%% — полезная работа\n", "Effective Time", eff " с", eff_pct
+        if (spin_pct < 5)
+            printf "%-30s %-20s %.1f%% — барьеры не проблема [OK]\n", "Spin Time", spin " с", spin_pct
+        else if (spin_pct < 15)
+            printf "%-30s %-20s %.1f%% — приемлемое [~]\n", "Spin Time", spin " с", spin_pct
+        else
+            printf "%-30s %-20s %.1f%% — ВЫСОКОЕ [!!]\n", "Spin Time", spin " с", spin_pct
+        printf "%-30s %-20s %.1f%% — накладные расходы\n", "Overhead Time", overhead " с", oh_pct
+    }
+
+    printf "%-30s %-20s %s\n", "Total Thread Count", threads, "Количество потоков"
+
+    if (elapsed > 0 && threads > 0) {
+        speedup = cpu / elapsed
+        util = speedup / threads * 100
+        printf "%-30s %-20s Утилизация: %.0f%%\n", "Коэфф. распараллеливания", speedup "x из " threads, util
+    }
+}
+' "$CSV_SUMMARY"
+
+echo ""
+
+# ── 2. ГОРЯЧИЕ ФУНКЦИИ ─────────────────────────────────
+echo "=============================================="
+echo "  2. ГОРЯЧИЕ ФУНКЦИИ (Top Hotspots)"
+echo "=============================================="
+echo ""
+
+awk -F'\t' '
+NR == 1 { next }
+NF >= 2 {
+    printf "%-40s %-20s %10s\n", $1, $14, $2
+    count++
+    if (count >= 15) exit
+}
+' "$CSV_HOTSPOTS"
+
+echo ""
+
+# ── 3. РАНГИ MPI ───────────────────────────────────────
+echo "=============================================="
+echo "  3. РАСПРЕДЕЛЕНИЕ ПО MPI РАНГАМ"
+echo "=============================================="
+echo ""
+
+awk -F'\t' '
+BEGIN { n_ranks = 0 }
+
+NR == 1 { next }
+
+/iso3dfd.*rank/ {
+    split($1, parts, /[()]/)
+    split(parts[2], r, / /)
+    rank = r[2] + 0
+
+    ranks[n_ranks]       = rank
+    cpu[n_ranks]         = $2 + 0
+    eff[n_ranks]         = $3 + 0
+    spin_t[n_ranks]      = $4 + 0
+    spin_imbal[n_ranks]  = $5 + 0
+    spin_lock[n_ranks]   = $6 + 0
+    spin_other[n_ranks]  = $7 + 0
+    overhead_t[n_ranks]  = $8 + 0
+
+    n_ranks++
+}
+
+END {
+    if (n_ranks == 0) {
+        print "Ошибка: не удалось распарсить данные рангов из CSV."
+        exit 1
+    }
+
+    # Сортировка по rank
+    for (i = 0; i < n_ranks - 1; i++) {
+        for (j = 0; j < n_ranks - 1 - i; j++) {
+            if (ranks[j] > ranks[j+1]) {
+                t = ranks[j]; ranks[j] = ranks[j+1]; ranks[j+1] = t
+                t = cpu[j]; cpu[j] = cpu[j+1]; cpu[j+1] = t
+                t = eff[j]; eff[j] = eff[j+1]; eff[j+1] = t
+                t = spin_t[j]; spin_t[j] = spin_t[j+1]; spin_t[j+1] = t
+                t = spin_imbal[j]; spin_imbal[j] = spin_imbal[j+1]; spin_imbal[j+1] = t
+                t = spin_lock[j]; spin_lock[j] = spin_lock[j+1]; spin_lock[j+1] = t
+                t = spin_other[j]; spin_other[j] = spin_other[j+1]; spin_other[j+1] = t
+                t = overhead_t[j]; overhead_t[j] = overhead_t[j+1]; overhead_t[j+1] = t
+            }
+        }
+    }
+
+    # Таблица
+    printf "+----------+----------+----------+--------+----------+----------+\n"
+    printf "|  Ранг    | CPU Time | Effective| Spin   | Spin     | Overhead |\n"
+    printf "|          |          |          | Time   | Imbalance| Time     |\n"
+    printf "+----------+----------+----------+--------+----------+----------+\n"
+    for (i = 0; i < n_ranks; i++)
+        printf "| rank %-4d| %7.3fs | %7.3fs | %5.3fs| %7.3fs | %7.3fs |\n", \
+            ranks[i], cpu[i], eff[i], spin_t[i], spin_imbal[i], overhead_t[i]
+    printf "+----------+----------+----------+--------+----------+----------+\n\n"
+
+    # Статистика
+    cmin = cpu[0]; cmax = cpu[0]; rmin = ranks[0]; rmax = ranks[0]
+    csum = 0; esum = 0; ssum = 0; osum = 0; lsum = 0; isum = 0
+    for (i = 0; i < n_ranks; i++) {
+        if (cpu[i] < cmin) { cmin = cpu[i]; rmin = ranks[i] }
+        if (cpu[i] > cmax) { cmax = cpu[i]; rmax = ranks[i] }
+        csum += cpu[i]; esum += eff[i]; ssum += spin_t[i]; osum += overhead_t[i]
+        lsum += spin_lock[i]; isum += spin_imbal[i]
+    }
+    cavg = csum / n_ranks
+    eavg = esum / n_ranks
+    savg = ssum / n_ranks
+    oavg = osum / n_ranks
+    spread = cmax - cmin
+    spread_pct = spread / cavg * 100
+    var = 0
+    for (i = 0; i < n_ranks; i++) var += (cpu[i] - cavg) ^ 2
+    std = sqrt(var / n_ranks)
+    cv = std / cavg * 100
+    epct = eavg / cavg * 100
+    spct = savg / cavg * 100
+    opct = oavg / cavg * 100
+
+    printf "==============================================\n"
+    printf "  СВОДКА ПО РАНГАМ\n"
+    printf "==============================================\n\n"
+    printf "Количество рангов:            %d\n", n_ranks
+    printf "CPU Time — мин:               %.3fs (rank %d)\n", cmin, rmin
+    printf "CPU Time — макс:              %.3fs (rank %d)\n", cmax, rmax
+    printf "CPU Time — среднее:           %.3fs\n", cavg
+    printf "CPU Time — разброс:           %.3fs (%.1f%%)\n", spread, spread_pct
+    printf "CPU Time — stddev:            %.3fs\n", std
+    printf "Коэфф. вариации:              %.2f%%\n\n", cv
+    printf "Effective Time — среднее:     %.3fs (%.1f%% от CPU)\n", eavg, epct
+    printf "Spin Time — среднее:          %.3fs (%.1f%% от CPU)\n", savg, spct
+    printf "Spin Imbalance — среднее:     %.3fs\n", isum / n_ranks
+    printf "Overhead Time — среднее:      %.3fs (%.1f%% от CPU)\n\n", oavg, opct
+
+    # Оценки
+    printf "==============================================\n"
+    printf "  ОЦЕНКИ\n"
+    printf "==============================================\n\n"
+    if (spread_pct < 5)  printf "[OK] Балансировка: %.1f%% — отличная\n", spread_pct
+    else if (spread_pct < 10) printf "[~]  Балансировка: %.1f%% — приемлемая\n", spread_pct
+    else printf "[!!] Балансировка: %.1f%% — дисбаланс\n", spread_pct
+    if (epct > 95) printf "[OK] Эффективность: %.1f%% — почти всё время в работе\n", epct
+    else if (epct > 90) printf "[~]  Эффективность: %.1f%% — хорошая\n", epct
+    else printf "[!!] Эффективность: %.1f%% — потери\n", epct
+    if (spct < 2) printf "[OK] Spin Time: %.1f%% — барьеры не проблема\n", spct
+    else if (spct < 5) printf "[~]  Spin Time: %.1f%% — умеренное\n", spct
+    else printf "[!!] Spin Time: %.1f%% — значительное ожидание\n", spct
+    if (opct < 1) printf "[OK] Overhead: %.1f%% — минимальный\n", opct
+    else if (opct < 3) printf "[~]  Overhead: %.1f%% — приемлемый\n", opct
+    else printf "[!!] Overhead: %.1f%% — высокий\n", opct
+    if (lsum < 0.1) printf "[OK] Lock Contention: %.3fs — блокировок нет\n", lsum
+    else printf "[!!] Lock Contention: %.3fs — есть конкуренция\n", lsum
+    printf "\n"
+
+    # Вывод — только факты из расчёта
+    printf "==============================================\n"
+    printf "  ВЫВОД\n"
+    printf "==============================================\n\n"
+    printf "Самый быстрый:   rank %d — %.3fs\n", rmin, cmin
+    printf "Самый медленный: rank %d — %.3fs\n", rmax, cmax
+    printf "Разница:         %.3fs (%.1f%%)\n", spread, spread_pct
+    printf "\n"
+}
+' "$CSV_RANKS"
+
+echo ""
+
+# ── 4. ПЛАТФОРМА ───────────────────────────────────────
+echo "=============================================="
+echo "  4. ИНФОРМАЦИЯ О ПЛАТФОРМЕ"
+echo "=============================================="
+echo ""
+
+awk -F'\t' '
+/Application Command Line/ { printf "Команда запуска:    %s\n", $3 }
+/Operating System/         { printf "ОС:                 %s\n", $3 }
+/MPI Process Rank/         { printf "MPI Rank (сводка):  %s\n", $3 }
+/Computer Name/           { printf "Имя узла:           %s\n", $3 }
+/Result Size/             { printf "Размер результата:  %s байт\n", $3 }
+/Collection start time/   { printf "Начало сбора:       %s\n", $3 }
+/Collection stop time/    { printf "Конец сбора:        %s\n", $3 }
+/Collector Type/           { printf "Тип коллектора:     %s\n", $3 }
+/Frequency/               { printf "Частота CPU:        %s Hz\n", $3 }
+/Logical CPU Count/      { printf "Логических ядер:    %s\n", $3 }
+' "$CSV_SUMMARY"
+
+echo ""
+
+echo "=============================================="
+echo "  CSV-файлы сохранены:"
+echo "    $CSV_SUMMARY"
+echo "    $CSV_RANKS"
+echo "    $CSV_HOTSPOTS"
+echo "=============================================="

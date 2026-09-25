@@ -1,0 +1,38 @@
+1 [138001515874624] INFO perfrun.launcher <> - Launcher main begin
+1 [138001515874624] INFO perfrun.launcher <> - MessageCatalogInit finished
+2 [138001515874624] INFO perfrun.launcher <> - Launcher instance created
+2 [138001515874624] INFO perfrun.launcher <> - argc = 6; cmdline = /opt/intel/oneapi/vtune/2026.4/bin64/amplxe-runss -dump-vdso -r /home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd_omp_offload/build/src/vtune_hotspots_mpi.kol-serv --tmp-dir /tmp/amplxe-tmp-root 
+54 [138001515874624] INFO perfrun.perfcollector <> - SEP tool path: /opt/intel/oneapi/vtune/2026.4/bin64/sep
+60 [138001515874624] INFO perfrun.launcher <> - create msngr2::ICliToolContext
+61 [138001515874624] INFO perfrun.launcher <> - create file finder object
+63 [138001350911680] INFO perfrun.launcher <> - plugin [remoteplug] was disabled because it doesn't support the given collection type.
+63 [138001350911680] INFO perfrun.launcher <> - plugin [system] was disabled because it doesn't support the given collection type.
+63 [138001350911680] INFO perfrun.vdso <> - dumping [vdso] pseudomodule
+64 [138001350911680] WARN perfrun.vdso <> - could not archive [vdso], return code 6, at file: vcs/perfrun1/plugins/vdso/src/vdso_collector.cpp:265
+64 [138001350911680] INFO perfrun.launcher <> - plugin [itt] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [ptracecollector] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [gpu] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [mrte] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [emon] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [cuscol] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [stdsrc] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [sep] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [vtsspp] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [perf] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [aoclprofile] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [tpss] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [media] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [parallelfs] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [power] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [l0_metrics] was disabled because it doesn't support the given collection type.
+64 [138001350911680] INFO perfrun.launcher <> - plugin [stall_reasons] was disabled because it doesn't support the given collection type.
+64 [138001515874624] INFO perfrun.launcher <> - Application exit code: 0
+64 [138001515874624] INFO perfrun.launcher <> - Exit code: 0
