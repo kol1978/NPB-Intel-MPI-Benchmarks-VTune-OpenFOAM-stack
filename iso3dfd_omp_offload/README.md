@@ -22,7 +22,8 @@
 | [`vtune_profiling_guide.md`](vtune_profiling_guide.md) | Руководство по профилированию: скрипт `run_vtune_hotspots.sh`, экспорт CSV, анализ результатов, APS |
 | [`profiling_compilation_levels.md`](profiling_compilation_levels.md) | Уровни модификации компиляции для профилирования: флаги `-g`, `-mllvm -parallel-source-info=2`, `-fdebug-info-for-profiling`, CMake-опция `ENABLE_PROFILING` |
 | `run_vtune_hotspots.sh` | Скрипт запуска VTune hotspots с автоматическим управлением ptrace_scope (требует `sudo`) |
-| `analyze_vtune.sh` | Скрипт автоматического анализа CSV-отчётов VTune (сводка, ранги MPI, горячие функции) |
+| `analyze` | Автоматический парсинг CSV-отчётов VTune: сводные метрики, топ горячих функций, таблица рангов MPI, статистика и оценки | [analyze](https://github.com/kol1978/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack/blob/main/iso3dfd_omp_offload/build/src/analyze) |
+
 
 ---
 
