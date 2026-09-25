@@ -21,7 +21,7 @@
 | [`NO_OFFLOAD_PATCH.md`](NO_OFFLOAD_PATCH.md) | Патч для CPU-only режима: обёртка проверки GPU в `#ifndef NO_OFFLOAD` и условный флаг `-fopenmp-targets=spir64` в CMakeLists.txt |
 | [`vtune_profiling_guide.md`](vtune_profiling_guide.md) | Руководство по профилированию: скрипт `run_vtune_hotspots.sh`, экспорт CSV, анализ результатов, APS |
 | [`profiling_compilation_levels.md`](profiling_compilation_levels.md) | Уровни модификации компиляции для профилирования: флаги `-g`, `-mllvm -parallel-source-info=2`, `-fdebug-info-for-profiling`, CMake-опция `ENABLE_PROFILING` |
-| `run_vtune_hotspots.sh` | Скрипт запуска VTune hotspots с автоматическим управлением ptrace_scope (требует `sudo`) |
+| `vtune` | Скрипт запуска VTune hotspots с автоматическим управлением ptrace_scope (требует `sudo`) | [vtune](https://github.com/kol1978/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack/blob/main/iso3dfd_omp_offload/build/src/vtune) |
 | `analyze` | Автоматический парсинг CSV-отчётов VTune: сводные метрики, топ горячих функций, таблица рангов MPI, статистика и оценки | [analyze](https://github.com/kol1978/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack/blob/main/iso3dfd_omp_offload/build/src/analyze) |
 
 
