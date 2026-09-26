@@ -51,8 +51,50 @@ Xorg -version
 
 ## Дерево проекта
 
-iso3dfd/ ├── CMakeLists.txt # Корневой CMake: сборка под icpx + Intel MPI + OpenMP ├── README.md # Описание, параметры запуска, режимы │ ├── src/ # Исходники проекта │ ├── iso3dfd.cpp # MAIN: парсинг аргументов, инициализация MPI, запуск │ │ │ ├── iso3dfd_grid.hpp # GRID: заголовок — аллокация, инициализация, индексация │ ├── iso3dfd_grid.cpp # GRID: реализация │ │ │ ├── iso3dfd_solver.hpp # SOLVER: заголовок — compute_iteration, compute_serial, compute_omp │ ├── iso3dfd_solver.cpp # SOLVER: stencil_point + двухуровневое cache-blocking (L2+L3) │ │ │ ├── iso3dfd_driver.hpp # DRIVER: заголовок — декомпозиция, halo exchange, временной цикл │ └── iso3dfd_driver.cpp # DRIVER: реализация — MPI_Sendrecv, тайминг │ ├── cmake/ # Доп. CMake-модули (если понадобятся) │ └── (пусто) │ └── build/ # Создаётся при сборке (в git не коммитится) ├── CMakeCache.txt ├── Makefile └── iso3dfd # Готовый бинарник
+```text
+iso3dfd_omp_offload/
+├── CMakeLists.txt                    # Корневой CMake: icpx + Intel MPI + OpenMP
+├── README.md                         # Описание, параметры запуска, режимы
+├── License.txt                       # Лицензия Intel
+├── iso3dfd_run_guide.md              # Инструкция по запуску
+├── profiling_compilation_levels.md  # Уровни компиляции и профилирования
+├── NO_OFFLOAD_PATCH.md              # Патч для отключения offload (под X5675)
+├── sample.json                      # Пример конфигурации запуска
+├── third-party-programs.txt         # Сторонние компоненты
+├── ЗАПИСКА.txt                       # Локальные заметки
+│
+├── apsIso3dfd                        # Скрипт: запуск через Intel APS (Application Performance Snapshot)
+├── runIso3dfd                        # Скрипт: запуск iso3dfd с параметрами (mpirun + аргументы сетки)
+│
+├── include/
+│   └── iso3dfd.h                     # Публичный заголовок (структуры, прототипы)
+│
+├── src/                              # Исходники (то, что в Git)
+│   ├── CMakeLists.txt                # Локальный CMake для src/
+│   ├── iso3dfd.cpp                   # MAIN: парсинг аргументов, MPI init, запуск
+│   ├── iso3dfd_verify.cpp            # Верификация результата (проверка корректности)
+│   └── utils.cpp                     # Утилиты (таймеры, вывод, инициализация сетки)
+│
+├── img/                              # Скриншоты/схемы для документации
+│   └── *.png
+│
+└── build/                            # Создаётся при сборке (в Git НЕ коммитится)
+    ├── CMakeCache.txt
+    ├── CMakeFiles/
+    ├── Makefile
+    ├── cmake_install.cmake
+    └── src/                          # Бинарник и артефакты сборки здесь
+        ├── iso3dfd                   # ← ГОТОВЫЙ БИНАРНИК
+        ├── CMakeFiles/
+        ├── Makefile
+        ├── cmake_install.cmake
+        ├── analyze                    # Скрипт: анализ результатов VTune/APS
+        ├── vtune                      # Скрипт: запуск VTune Hotspots для MPI
+        ├── vtune_profiling_guide.md   # Гайд по профилированию
+        ├── aps_report_*.html         # HTML-отчёт Intel APS
+        └── vtune_hotspots_mpi.kol-serv/  # Результаты VTune (data.0..11, config, log, sqlite-db)
 
+```
 
 ## Пример имеет один исполняемый файл. Для запуска каждой реализации используйте соответствующие команды cmake.
 
