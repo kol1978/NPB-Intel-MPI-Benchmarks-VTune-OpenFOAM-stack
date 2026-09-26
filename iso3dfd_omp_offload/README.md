@@ -1,4 +1,4 @@
-# Пример `Guided iso3dfd OpenMP Offload`
+# Пример профилирование приложения OpenMP в Linux*`Guided iso3dfd OpenMP Offload`
 
 Пример `Guided iso3dfd OpenMP Offload` демонстрирует, как можно:
 
@@ -24,7 +24,19 @@
 [vtune](https://github.com/kol1978/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack/blob/main/iso3dfd_omp_offload/build/src/vtune)  | Скрипт запуска VTune hotspots с автоматическим управлением ptrace_scope (требует `sudo`) |
 | [analyze](https://github.com/kol1978/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack/blob/main/iso3dfd_omp_offload/build/src/analyze) | Автоматический парсинг CSV-отчётов VTune: сводные метрики, топ горячих функций, таблица рангов MPI, статистика и оценки |
 
+### Проверить наличие пакетов:
+```bash
+dpkg -l | grep libgtk2
+dpkg -l | grep libpango
+dpkg -l | grep xserver-xorg-core
+```
 
+### Посмотреть версии:
+```bash
+pkg-config --modversion gtk+-2.0
+pkg-config --modversion pango
+Xorg -version
+```
 ---
 
 ## Структура образца iso3dfd
@@ -37,8 +49,18 @@
 - **GPU Offload Optimized 2** — `teams distribute` с улучшенным шаблоном доступа к данным.
 - **GPU Offload Optimized 3** — итерации по третьему измерению.
 
-Пример имеет один исполняемый файл. Для запуска каждой реализации используйте соответствующие команды cmake.
+## Дерево проекта
 
+iso3dfd/ ├── CMakeLists.txt # Корневой CMake: сборка под icpx + Intel MPI + OpenMP ├── README.md # Описание, параметры запуска, режимы │ ├── src/ # Исходники проекта │ ├── iso3dfd.cpp # MAIN: парсинг аргументов, инициализация MPI, запуск │ │ │ ├── iso3dfd_grid.hpp # GRID: заголовок — аллокация, инициализация, индексация │ ├── iso3dfd_grid.cpp # GRID: реализация │ │ │ ├── iso3dfd_solver.hpp # SOLVER: заголовок — compute_iteration, compute_serial, compute_omp │ ├── iso3dfd_solver.cpp # SOLVER: stencil_point + двухуровневое cache-blocking (L2+L3) │ │ │ ├── iso3dfd_driver.hpp # DRIVER: заголовок — декомпозиция, halo exchange, временной цикл │ └── iso3dfd_driver.cpp # DRIVER: реализация — MPI_Sendrecv, тайминг │ ├── cmake/ # Доп. CMake-модули (если понадобятся) │ └── (пусто) │ └── build/ # Создаётся при сборке (в git не коммитится) ├── CMakeCache.txt ├── Makefile └── iso3dfd # Готовый бинарник
+
+
+## Пример имеет один исполняемый файл. Для запуска каждой реализации используйте соответствующие команды cmake.
+
+1. В исходном коде нет MPI. iso3dfd не содержит #include <mpi.h>, не вызывает MPI_Init, MPI_Comm_rank и т. д. Каждый экземпляр ./iso3dfd работает полностью независимо — нет обмена между рангами [15_1_0_0][15_1_0_7].
+
+2. CMakeLists.txt не зависит от MPI. В сборочных файлах нет find_package(MPI), нет линковки с libmpi. Компиляция — это только icpx + OpenMP-флаги [15_2_0_0].
+
+3. mpirun от OpenMPI умеет запускать любые процессы. Команда mpirun -n 12 ./iso3dfd ... просто запустит 12 независимых копий. OpenMPI не требует, чтобы бинарник был скомпилирован с MPI-библиотекой [15_2_0_7].
 ---
 
 ## Рабочий процесс iso3dfd OpenMP Offload

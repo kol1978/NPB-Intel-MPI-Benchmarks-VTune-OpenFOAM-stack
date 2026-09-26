@@ -1,0 +1,24 @@
+//==============================================================
+// ISO3DFD.H — PATCH FOR MPI SUPPORT
+//
+// Add the following declarations to your existing iso3dfd.h
+// (inside the existing #pragma once / include guard)
+//
+// The original content of iso3dfd.h is NOT shown here —
+// only the additions needed for USE_MPI.
+//
+// Place these lines near the end of iso3dfd.h,
+// after existing function declarations.
+// =============================================================
+
+#ifdef USE_MPI
+/*
+ * MPI: Initialize local subdomain for a given rank.
+ * Called from iso3dfd.cpp main() when USE_MPI is defined.
+ * Implemented in utils.cpp.
+ */
+void InitializeLocal(float* ptr_prev, float* ptr_next, float* ptr_vel,
+                    size_t n1, size_t n2, size_t n3_alloc,
+                    size_t n3_local, size_t z_start_global,
+                    size_t n3_global);
+#endif

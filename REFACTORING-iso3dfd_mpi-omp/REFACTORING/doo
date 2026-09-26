@@ -1,0 +1,82 @@
+#!/bin/bash
+# =============================================================
+# Скрипт ./doo сборки iso3dfd с MPI-рефакторингом
+# =============================================================
+set -e  # остановка при ошибке
+
+# ── Инициализация окружения oneAPI ──
+ONEAPI_SETVARS="/opt/intel/oneapi/setvars.sh"
+
+if [ ! -f "$ONEAPI_SETVARS" ]; then
+    echo "✗ Ошибка: не найден setvars.sh по пути $ONEAPI_SETVARS"
+    echo "   Проверьте установку oneAPI или задайте переменную ONEAPI_ROOT"
+    exit 1
+fi
+
+echo "── Загрузка oneAPI окружения... ──"
+source "$ONEAPI_SETVARS" --force 2>/dev/null || {
+    echo "✗ Не удалось инициализировать oneAPI"
+    exit 1
+}
+
+# Проверка компилятора
+if ! command -v icpx &> /dev/null; then
+    echo "✗ icpx не найден в PATH после загрузки setvars.sh"
+    exit 1
+fi
+echo "   icpx version: $(icpx --version | head -n1)"
+echo ""
+
+# ── Параметры ──
+BUILD_DIR="build"
+SRC_DIR="."
+
+# ── Очистка (если передан аргумент --clean) ──
+if [ "$1" == "--clean" ]; then
+    echo "── Очистка build-директории... ──"
+    rm -rf "$BUILD_DIR"
+    echo "   Директория $BUILD_DIR удалена."
+    echo ""
+fi
+
+# Если build не существует — создадим его на этапе cmake
+if [ ! -d "$BUILD_DIR" ]; then
+    echo "── Директория сборки $BUILD_DIR отсутствует, будет создана на этапе cmake ──"
+    echo ""
+fi
+
+# ── Конфигурация (cmake -S . -B build) ──
+echo "── Конфигурация проекта... ──"
+cmake \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DNO_OFFLOAD=ON \
+    -DVERIFY_RESULTS=ON \
+    -DENABLE_MPI=ON \
+    -S "$SRC_DIR" \
+    -B "$BUILD_DIR"
+
+# ── Сборка (cmake --build build) ──
+echo "── Сборка проекта... ──"
+cmake --build "$BUILD_DIR" -j"$(nproc)"
+
+# ── Проверка результата ──
+BINARY="$BUILD_DIR/iso3dfd"
+if [ -f "$BINARY" ]; then
+    echo ""
+    echo "✓ Сборка успешна!"
+    echo "  Бинарник: $BINARY"
+    echo "  Размер: $(ls -lh "$BINARY" | awk '{print $5}')"
+    echo ""
+    echo "── Запуск (Intel MPI, native pinning) ──"
+    echo "  OMP_NUM_THREADS=2 I_MPI_PIN_DOMAIN=omp mpirun -n 12 \"$BINARY\" 256 256 256 16 8 64 100"
+    echo ""
+    echo "── Запуск с ограничением NUMA-нод 0,1 (вся задача) ──"
+    echo "  OMP_NUM_THREADS=2 numactl --cpunodebind=0,1 --membind=0,1 mpirun -n 12 \"$BINARY\" 256 256 256 16 8 64 100"
+    echo ""
+    echo "── Запуск с per-rank NUMA-привязкой (wrapper) ──"
+    echo "  OMP_NUM_THREADS=2 mpirun -n 12 ./numa_wrapper.sh \"$BINARY\" 256 256 256 16 8 64 100"
+else
+    echo "✗ Ошибка: бинарник не найден по пути $BINARY"
+    echo "   Проверьте логи выше на наличие ошибок линковки."
+    exit 1
+fi

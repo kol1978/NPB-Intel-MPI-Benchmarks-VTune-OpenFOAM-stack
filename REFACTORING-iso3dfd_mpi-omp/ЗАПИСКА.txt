@@ -1,0 +1,34 @@
+rm -rf build
+cmake -S . -B build
+cmake --build build -j$(nproc)
+
+
+source /opt/intel/oneapi/setvars.sh --force
+cd iso3dfd_omp_offload
+
+# Конфигурация (одна строка вместо mkdir + cd + cmake ..)
+cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+      -DNO_OFFLOAD=ON \
+      -DVERIFY_RESULTS=OFF \
+      -DENABLE_MPI=ON \
+      -S . -B build
+
+# Сборка (без cd в build)
+cmake --build build -j$(nproc)
+
+# Запуск (из корня репозитория)
+OMP_NUM_THREADS=2 mpirun -n 12 ./build/src/iso3dfd 256 256 256 16 8 64 100
+
+----------------------------ЗАПУСК
+
+# Option 1: Intel MPI native pinning (рекомендуется)
+export OMP_NUM_THREADS=2
+export I_MPI_PIN_DOMAIN=omp
+mpirun -n 12 ./build/iso3dfd 256 256 256 16 8 64 100
+
+# Option 2: с numactl на весь mpirun (если хочешь ограничить 2 NUMA-нодами)
+OMP_NUM_THREADS=2 numactl --cpunodebind=0,1 --membind=0,1 \
+  mpirun -n 12 ./build/iso3dfd 256 256 256 16 8 64 100
+
+# Option 3: per-rank numactl через wrapper (каждый ранг на своей NUMA-ноде)
+# нужен wrapper-скрипт (см. ниже)

@@ -1,0 +1,4 @@
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/REFACTORING-iso3dfd_mpi-omp/REFACTORING/build/CMakeFiles/iso3dfd.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/REFACTORING-iso3dfd_mpi-omp/REFACTORING/build/CMakeFiles/run.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/REFACTORING-iso3dfd_mpi-omp/REFACTORING/build/CMakeFiles/edit_cache.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/REFACTORING-iso3dfd_mpi-omp/REFACTORING/build/CMakeFiles/rebuild_cache.dir
