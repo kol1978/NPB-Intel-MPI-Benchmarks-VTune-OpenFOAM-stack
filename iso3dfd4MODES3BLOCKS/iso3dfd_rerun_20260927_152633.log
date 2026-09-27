@@ -1,0 +1,18 @@
+========================================
+iso3dfd — повтор всех запусков
+Дата: 2026-09-27 15:26:33
+Сервер: kol-serv
+========================================
+
+========================================
+>>> Запуск 1: sequential
+--- Переменные окружения ---
+OMP_NUM_THREADS=<unset>
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+I_MPI_PIN_ORDER=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 16 8 64 100 sequential
+--- Вывод ---

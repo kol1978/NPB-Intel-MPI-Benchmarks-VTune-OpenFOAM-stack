@@ -1,0 +1,263 @@
+========================================
+iso3dfd — повтор всех запусков
+Дата: 2026-09-27 15:26:36
+Сервер: kol-serv
+========================================
+
+========================================
+>>> Запуск 1: sequential
+--- Переменные окружения ---
+OMP_NUM_THREADS=<unset>
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+I_MPI_PIN_ORDER=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 16 8 64 100 sequential
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       16 x 8 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         47.095 s
+Performance:  1.85 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> Запуск 2: pure_mpi 12 (n3=480)
+--- Переменные окружения ---
+OMP_NUM_THREADS=1
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -n 12 ./build/iso3dfd 256 256 480 16 8 40 100 pure_mpi
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 40
+Block:       16 x 8 x 40
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         12.282 s
+Performance:  0.71 GFLOPS
+Lattice:      1382400 points/iteration
+
+========================================
+>>> Запуск 3: pure_mpi 2 (n3=256)
+--- Переменные окружения ---
+OMP_NUM_THREADS=1
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 128 100 pure_mpi
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 128
+Block:       16 x 8 x 128
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         21.547 s
+Performance:  1.89 GFLOPS
+Lattice:      6451200 points/iteration
+
+========================================
+>>> Запуск 4: hybrid 2×6 (256³)
+--- Переменные окружения ---
+OMP_NUM_THREADS=6
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 128 100 hybrid
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 128
+Block:       16 x 8 x 128
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         4.017 s
+Performance:  10.12 GFLOPS
+Lattice:      6451200 points/iteration
+
+========================================
+>>> Запуск 5: pure_omp 12 (256³)
+--- Переменные окружения ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+I_MPI_PIN_ORDER=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       16 x 8 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         4.169 s
+Performance:  20.89 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> Запуск 6: pure_mpi 12 (n3=960)
+--- Переменные окружения ---
+OMP_NUM_THREADS=1
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -n 12 ./build/iso3dfd 256 256 960 16 8 80 100 pure_mpi
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 80
+Block:       16 x 8 x 80
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         25.132 s
+Performance:  0.92 GFLOPS
+Lattice:      3686400 points/iteration
+
+========================================
+>>> Запуск 7: hybrid 2×6 (512×512×256)
+--- Переменные окружения ---
+OMP_NUM_THREADS=6
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -n 2 ./build/iso3dfd 512 512 256 16 8 128 100 hybrid
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        512 x 512 x 128
+Block:       16 x 8 x 128
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         27.202 s
+Performance:  6.38 GFLOPS
+Lattice:      27553792 points/iteration
+
+========================================
+>>> Запуск 0: pure_mpi 12 (n3=240, деградированный)
+--- Переменные окружения ---
+OMP_NUM_THREADS=1
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -n 12 ./build/iso3dfd 256 256 240 16 8 20 100 pure_mpi
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 20
+Block:       16 x 8 x 20
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         6.325 s
+Performance:  0.23 GFLOPS
+Lattice:      230400 points/iteration
+
+========================================
+>>> Запуск 8: hybrid 1×8 (n3=480, адаптированный)
+--- Переменные окружения ---
+OMP_NUM_THREADS=8
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFF
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -np 1 ./build-vtune-hotspots/iso3dfd 256 256 480 64 64 64 2000 hybrid
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         220.806 s
+Performance:  15.25 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> Запуск 9: hybrid 1×12 (n3=480, адаптированный)
+--- Переменные окружения ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -np 1 ./build-vtune-hotspots/iso3dfd 256 256 480 64 64 64 2000 hybrid
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         142.511 s
+Performance:  23.63 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> Запуск 10: hybrid 2×6 (n3=480, адаптированный)
+--- Переменные окружения ---
+OMP_NUM_THREADS=6
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -np 2 ./build-vtune-hotspots/iso3dfd 256 256 480 64 64 64 2000 hybrid
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 240
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         133.893 s
+Performance:  12.14 GFLOPS
+Lattice:      12902400 points/iteration
+
+========================================
+Все запуски завершены: 2026-09-27 15:37:27
+Лог: iso3dfd_rerun_20260927_152636.log
+========================================
