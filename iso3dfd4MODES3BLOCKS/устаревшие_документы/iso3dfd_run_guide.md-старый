@@ -1,0 +1,771 @@
+# Инструкция по запуску iso3dfd (4 режима × 3 блока)
+
+## Содержание
+
+1. [Быстрый старт](#быстрый-старт)
+2. [Четыре режима запуска](#четыре-режима-запуска)
+3. [Параметры командной строки](#параметры-командной-строки)
+4. [Декомпозиция и ограничения](#декомпозиция-и-ограничения)
+5. [Cache-blocking: расчёт и подбор блоков](#cache-blocking-расчёт-и-подбор-блоков)
+6. [NUMA-оптимизация](#numa-оптимизация)
+7. [Управление потоками OpenMP](#управление-потоками-openmp)
+8. [Профилирование](#профилирование)
+9. [Сценарии использования](#сценарии-использования)
+10. [Результаты экспериментов](#результаты-экспериментов)
+11. [Устранение проблем](#устранение-проблем)
+
+---
+
+## Быстрый старт
+
+### Сборка
+
+```bash
+# 1. Активация oneAPI (обязательно для icpx + Intel MPI)
+source /opt/intel/oneapi/setvars.sh
+
+# 2. Конфигурация и сборка
+cmake -S . -B build -DVERIFY_RESULTS=0
+cmake --build build -j$(nproc)
+```
+
+Бинарник: `build/iso3dfd`
+
+### Проверка (4 команды)
+
+```bash
+# 1. Sequential — базовый эталон
+./build/iso3dfd 256 256 256 16 8 64 100 sequential
+
+# 2. Pure MPI — 12 рангов
+mpirun -n 12 ./build/iso3dfd 256 256 480 16 8 40 100 pure_mpi
+
+# 3. Hybrid — 2 ранга × 6 потоков (целевой режим)
+OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+
+# 4. Pure OpenMP — 12 потоков
+OMP_NUM_THREADS=12 ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+```
+
+### Требования
+
+- **Компилятор:** Intel LLVM (icpx) 2026.1+ — `/opt/intel/oneapi/compiler/2026.1/bin`
+- **MPI:** Intel MPI 2021.18+ — `/opt/intel/oneapi/mpi/2021.18`
+- **OpenMP:** Intel OpenMP 5.1 (`-fiopenmp`), в составе icpx
+- **GPU:** не требуется (CPU-only)
+- **CMake:** ≥ 3.20
+
+---
+
+## Четыре режима запуска
+
+### 1. Sequential — последовательный
+
+```bash
+./build/iso3dfd n1 n2 n3 b1 b2 b3 niter sequential
+```
+
+| Параметр | Значение |
+|---|---|
+| Процессов | 1 |
+| Потоков | 1 |
+| MPI | Нет |
+| OpenMP | Нет |
+| Функция | `compute_serial` |
+
+Базовый эталон для сравнения. Полная сетка в одном процессе, без распараллеливания.
+
+**Пример:**
+```bash
+./build/iso3dfd 256 256 256 16 8 64 100 sequential
+```
+
+**Вывод:**
+```
+Grid:        256 x 256 x 256
+Block:       16 x 8 x 64
+Time:         44.949 s
+Performance:  1.94 GFLOPS
+Lattice:      13824000 points/iteration
+```
+
+---
+
+### 2. Pure MPI — чистый MPI
+
+```bash
+mpirun -n <N> ./build/iso3dfd n1 n2 n3 b1 b2 b3 niter pure_mpi
+```
+
+| Параметр | Значение |
+|---|---|
+| Процессов | N |
+| Потоков | 1 на процесс |
+| MPI | `MPI_Sendrecv` для halo |
+| OpenMP | Нет |
+| Функция | `compute_serial` |
+| Ограничение | `n3 % N == 0` |
+
+Каждый ранг работает со своим куском `n1 × n2 × (n3/N)` + 16 слоёв halo. Обмен halo через `MPI_Sendrecv` каждую итерацию.
+
+**Пример (12 рангов):**
+```bash
+mpirun -n 12 ./build/iso3dfd 256 256 480 16 8 40 100 pure_mpi
+```
+
+**Вывод:**
+```
+Grid:        256 x 256 x 40
+Block:       16 x 8 x 40
+Time:         11.161 s
+Performance:  0.78 GFLOPS
+Lattice:      1382400 points/iteration
+```
+
+> `Performance` — от rank 0. Суммарная производительность = 0.78 × 12 = 9.36 GFLOPS.
+
+---
+
+### 3. Hybrid — MPI + OpenMP (целевой режим)
+
+```bash
+OMP_NUM_THREADS=<T> mpirun -n <M> ./build/iso3dfd n1 n2 n3 b1 b2 b3 niter hybrid
+```
+
+| Параметр | Значение |
+|---|---|
+| Процессов | M |
+| Потоков | T на процесс |
+| MPI | `MPI_Sendrecv` для halo |
+| OpenMP | `parallel for collapse(2)` по Z, Y |
+| Функция | `compute_omp` |
+| Ограничение | `n3 % M == 0` |
+
+Рекомендуемая конфигурация для 2-сокетного Xeon X5675: **M=2, T=6** (по одному рангу на NUMA-узел).
+
+**Пример (2 ранга × 6 потоков):**
+```bash
+OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+```
+
+**Вывод:**
+```
+Grid:        256 x 256 x 128
+Block:       16 x 8 x 64
+Time:         4.0 s
+Performance:  10.16 GFLOPS
+Lattice:      6451200 points/iteration
+```
+
+> Суммарная производительность = 10.16 × 2 = 20.32 GFLOPS — **насыщение памяти DDR3**.
+
+---
+
+### 4. Pure OpenMP — чистый OpenMP
+
+```bash
+OMP_NUM_THREADS=<N> ./build/iso3dfd n1 n2 n3 b1 b2 b3 niter pure_omp
+```
+
+| Параметр | Значение |
+|---|---|
+| Процессов | 1 |
+| Потоков | N |
+| MPI | Нет |
+| OpenMP | `parallel for collapse(2)` по Z, Y |
+| Функция | `compute_omp` |
+| Ограничение | Нет |
+
+Полная сетка в одном процессе, распараллеливание через OpenMP.
+
+**Пример (12 потоков):**
+```bash
+OMP_NUM_THREADS=12 ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+```
+
+**Вывод:**
+```
+Grid:        256 x 256 x 256
+Block:       16 x 8 x 64
+Time:         4.438 s
+Performance:  19.62 GFLOPS
+Lattice:      13824000 points/iteration
+```
+
+---
+
+## Параметры командной строки
+
+### Синтаксис
+
+```
+./build/iso3dfd n1 n2 n3 b1 b2 b3 niter [режим]
+```
+
+### Описание аргументов
+
+| Позиция | Имя | По умолчанию | Описание |
+|---|---|---|---|
+| 1 | `n1` | 256 | Размер сетки по X |
+| 2 | `n2` | 256 | Размер сетки по Y |
+| 3 | `n3` | 256 | Размер сетки по Z |
+| 4 | `b1` | 16 | Размер блока (тайла) по X |
+| 5 | `b2` | 8 | Размер блока (тайла) по Y |
+| 6 | `b3` | 64 | Размер блока (тайла) по Z |
+| 7 | `niter` | 100 | Число шагов по времени |
+| 8 | `режим` | sequential | `sequential` \| `pure_mpi` \| `hybrid` \| `pure_omp` |
+
+### Влияние параметров на производительность
+
+| Изменение | Эффект |
+|---|---|
+| Сетка 256³ → 512³ | Объём × 8, память × 8, throughput падает (насыщение DRAM) |
+| b3 = 64 → 128 (hybrid 6 потоков) | Переполнение L3 на 60% → падение GFLOPS |
+| b3 = 64 → 32 (hybrid 6 потоков) | L3 заполнен на 51% → меньше давление, но больше блоков |
+| niter 100 → 1000 | Время × 10, throughput стабилизируется |
+| OMP_NUM_THREADS 6 → 12 (HT) | L3 на поток × 2 меньше → может потребоваться меньший b3 |
+
+---
+
+## Декомпозиция и ограничения
+
+### Декомпозиция по оси Z
+
+Домен режется по Z на равные куски: ранг `r` получает слои `Z[r * n3/M .. (r+1) * n3/M - 1]`.
+
+### Правило делимости
+
+| Режим | Условие | При нарушении |
+|---|---|---|
+| pure_mpi (N рангов) | `n3 % N == 0` | `Error: n3 must be divisible by nprocs` |
+| hybrid (M рангов) | `n3 % M == 0` | `Error: n3 must be divisible by nprocs` |
+| sequential | Нет ограничений | — |
+| pure_omp | Нет ограничений | — |
+
+### Подбор n3 для 12 рангов
+
+| n3 | На ранг | Interior (−16 halo) | Доля полезного | Рекомендация |
+|---|---|---|---|---|
+| 240 | 20 | 4 | 20% | ✗ слишком тонкий |
+| 360 | 30 | 14 | 47% | приемлемо |
+| 480 | 40 | 24 | 60% | ✓ хорошо |
+| 720 | 60 | 44 | 73% | ✓ очень хорошо |
+| 960 | 80 | 64 | 80% | ✓ отлично |
+
+> **Правило:** минимум 4×kHalfLength = 32 слоя на ранг.
+
+### Подбор n3 для 2 рангов (hybrid)
+
+| n3 | На ранг | Interior | Доля полезного |
+|---|---|---|---|
+| 128 | 64 | 48 | 75% |
+| 256 | 128 | 112 | 88% |
+| 512 | 256 | 240 | 94% |
+
+---
+
+## Cache-blocking: расчёт и подбор блоков
+
+### Формула рабочего набора
+
+```
+input(halo) = (b1 + 16) × (b2 + 16) × (b3 + 16) × 4    ← prev с halo
+output      = b1 × b2 × b3 × 4                          ← next
+vel         = b1 × b2 × b3 × 4                          ← vel
+total       = input(halo) + output + vel
+```
+
+### Характеристики кэша Xeon X5675
+
+| Уровень | Размер | На ядро/поток |
+|---|---|---|
+| L1 Data | 32 КБ | 32 КБ (на ядро) |
+| L2 | 256 КБ | 256 КБ (на ядро) |
+| L3 | 12 МБ | 2 МБ (при 6 потоках на сокет) |
+
+### Расчёт для b1=16, b2=8 (фиксированные)
+
+| b3 | На поток | Сумма (6 потоков) | % L3 (2 МБ) | Вердикт |
+|---|---|---|---|---|
+| 32 | 176 КБ | 1056 КБ | 51% | ✓ консервативный |
+| **64** | **304 КБ** | **1824 КБ** | **87%** | **✓ оптимальный** |
+| 128 | 560 КБ | 3360 КБ | 160% | ✗ переполнение |
+| 256 | 1072 КБ | 6432 КБ | 314% | ✗ катастрофа |
+
+### Ошибки в изначальном расчёте (исправлены)
+
+| Ошибка | Неверно | Верно |
+|---|---|---|
+| L3 на поток | 12 МБ (весь кэш сокета) | 2 МБ (12 МБ / 6 потоков) |
+| Число массивов | 2 (prev + next) | 3 (prev + next + vel) |
+| Следствие | b3 = 256 | b3 = 64 |
+
+### Рекомендации по блокам
+
+| Режим | Потоков/сокет | L3/поток | b3 оптимальный | Сумма (6 потоков) | % L3 |
+|---|---|---|---|---|---|
+| sequential | 1 | 12 МБ | 64–256 | — | 2.5–8.5% |
+| pure_omp (12, HT) | 12 | 1 МБ | 32 | 1056 КБ | 51% |
+| **hybrid (2×6)** | **6** | **2 МБ** | **64** | **1824 КБ** | **87%** |
+| pure_mpi (12) | 1 на ранг | 12 МБ | 64–128 | — | 2.5–4.6% |
+| pure_mpi (2) | 1 на ранг | 12 МБ | 64–128 | — | 2.5–4.6% |
+
+### Эксперимент для подбора b3 в hybrid
+
+```bash
+# b3 = 32 (L3 заполнен на 51%)
+OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 32 100 hybrid
+
+# b3 = 64 (L3 заполнен на 87%) — ожидаемо лучший
+OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+
+# b3 = 128 (L3 переполнен на 160%) — ожидаемо худший
+OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 128 100 hybrid
+```
+
+---
+
+## NUMA-оптимизация
+
+### Архитектура X5675
+
+```
+Socket 0: 6 ядер, L3 12 МБ, DDR3 × 3 канала (~32 ГБ/с) → NUMA-узел 0
+Socket 1: 6 ядер, L3 12 МБ, DDR3 × 3 канала (~32 ГБ/с) → NUMA-узел 1
+QPI между сокетами: ~25.6 ГБ/с
+```
+
+### Рекомендуемые конфигурации
+
+#### Hybrid (целевой) — 2 ранга по сокетам
+
+```bash
+# Intel MPI pinning
+I_MPI_PIN_DOMAIN=[0xffffffff00,0x00ffffffff] \
+OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+
+# Или через numactl (запуск двух процессов вручную)
+OMP_NUM_THREADS=6 numactl --cpunodebind=0 --membind=0 \
+    ./build/iso3dfd 256 256 256 16 8 64 100 hybrid &
+OMP_NUM_THREADS=6 numactl --cpunodebind=1 --membind=1 \
+    ./build/iso3dfd 256 256 256 16 8 64 100 hybrid &
+wait
+```
+
+#### Pure OpenMP — один NUMA-узел
+
+```bash
+# 6 потоков на одном сокете (локальная память)
+OMP_NUM_THREADS=6 numactl --cpunodebind=0 --membind=0 \
+    ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+
+# 12 потоков interleave по двум сокетам
+OMP_NUM_THREADS=12 numactl --interleave=0,1 \
+    ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+```
+
+#### Pure MPI — привязка рангов
+
+```bash
+# 12 рангов, по 6 на сокет
+I_MPI_PIN_DOMAIN=omp mpirun -n 12 ./build/iso3dfd 256 256 480 16 8 40 100 pure_mpi
+```
+
+### Проверка NUMA-локальности через APS
+
+```bash
+aps --collection-mode=all --result-dir=aps_numa_check -- \
+    OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+
+aps --report aps_numa_check
+```
+
+Смотреть `NUMA ratio`:
+- < 5% — отлично (данные локальны)
+- 5–15% — приемлемо
+- > 15% — нужна привязка через `numactl` или `I_MPI_PIN_DOMAIN`
+
+---
+
+## Управление потоками OpenMP
+
+### Базовые варианты
+
+```bash
+# Все ядра (12 физических)
+OMP_NUM_THREADS=12 ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+
+# Один NUMA-узел (6 ядер)
+OMP_NUM_THREADS=6 ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+
+# С numactl
+OMP_NUM_THREADS=6 numactl --cpunodebind=0 --membind=0 \
+    ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+```
+
+### Schedule (распределение итераций)
+
+```bash
+# Static — по умолчанию, лучший для равномерной нагрузки (stencil)
+OMP_SCHEDULE=static OMP_NUM_THREADS=6 \
+    mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+
+# Dynamic — для неравномерной нагрузки (если OpenMP Imbalance > 15%)
+OMP_SCHEDULE=dynamic,4 OMP_NUM_THREADS=6 \
+    mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+```
+
+### Потоки и L3
+
+| OMP_NUM_THREADS | L3 на поток | b3 рекомендуется | Сумма (6 потоков) |
+|---|---|---|---|
+| 6 (без HT) | 2 МБ | 64 | 1824 КБ (87%) |
+| 12 (с HT) | 1 МБ | 32 | 1056 КБ (51%) |
+
+> При включении Hyper-Threading (12 потоков) L3 на поток уменьшается вдвое —
+> нужно пропорционально уменьшить b3.
+
+---
+
+## Профилирование
+
+### Intel APS (Application Performance Snapshot)
+
+Лёгкий профилировщик, overhead 1–3%, не требует root.
+
+```bash
+# Сбор всех метрик
+aps --collection-mode=all --result-dir=aps_result -- \
+    ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+
+# Только HW-счётчики (< 1% overhead)
+aps --collection-mode=hwc --result-dir=aps_hwc -- \
+    ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+
+# Только OpenMP (< 1% overhead)
+aps --collection-mode=omp --result-dir=aps_omp -- \
+    OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+
+# Отчёт
+aps --report aps_result
+```
+
+#### Интерпретация метрик APS
+
+| Метрика | Норма для stencil | Плохо | Действие |
+|---|---|---|---|
+| CPI | 0.5–1.0 | > 2.0 | Проверить Memory Stalls |
+| Memory Stalls | < 20% | > 40% | Уменьшить b3 |
+| L2 Stalls | < 10% | > 30% | Рабочий набор не в L1 |
+| L3 Stalls | < 15% | > 30% | Рабочий набор не в L2 |
+| DRAM Stalls | < 10% | > 20% | Данные в DRAM — уменьшить b3 |
+| NUMA ratio | < 5% | > 15% | Использовать `numactl` |
+| Vectorization | > 80% (128-bit SSE) | < 50% | Пересобрать с `-O3` |
+| OpenMP Imbalance | < 10% | > 15% | Изменить `OMP_SCHEDULE` или b3 |
+| Serial Time | < 5% | > 15% | Слишком много однопоточного кода |
+| SP GFLOPS | ~20 (hybrid) | < 10 | Сравнить с метрикой iso3dfd |
+
+### Intel VTune Profiler
+
+Глубокий анализ, overhead ~5% (HW) или ~2× (SW).
+
+```bash
+# Hotspots (HW sampling, нужен SEP-драйвер)
+vtune -collect hotspots -knob sampling-mode=hw \
+    -r vtune_result -- \
+    ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+
+# Hotspots (SW sampling, без SEP)
+vtune -collect hotspots -knob sampling-mode=sw \
+    -r vtune_result -- \
+    ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+
+# С MPI
+mpirun -n 2 -gtool "vtune -collect hotspots -r vtune_result" :all \
+    ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+```
+
+#### Что смотреть в VTune
+
+| Метрика | Описание | Что ожидать |
+|---|---|---|
+| Top-10 функций | Самые ресурсоёмкие | `compute_omp` или `compute_serial` ~90% |
+| CPU Time vs Elapsed | Утилизация | CPU ≈ Elapsed × Nпотоков |
+| Per-thread timeline | Баланс потоков | Ровные полосы = хорошо |
+| Wait Time | Простой | Низкий для stencil |
+
+### Сборка с отладочной информацией для профилирования
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DVERIFY_RESULTS=0
+cmake --build build -j$(nproc)
+```
+
+Для дополнительной отладочной информации добавить в `CMakeLists.txt`:
+```cmake
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fiopenmp -fdebug-info-for-profiling")
+```
+
+---
+
+## Сценарии использования
+
+### Сценарий 1: Baseline-замер
+
+Получить эталонные метрики для сравнения.
+
+```bash
+# Sequential
+./build/iso3dfd 256 256 256 16 8 64 100 sequential
+
+# Hybrid
+OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+
+# Pure OMP
+OMP_NUM_THREADS=12 ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+```
+
+Сравнить `Time` и `Performance` между режимами.
+
+---
+
+### Сценарий 2: Поиск оптимального b3
+
+Найти размер блока по Z, дающий максимальный GFLOPS.
+
+```bash
+for b3 in 16 32 64 128; do
+    echo "=== b3=$b3 ==="
+    OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 $b3 100 hybrid
+done
+```
+
+Ожидание: b3=64 — лучший (87% L3), b3=128 — худший (160% L3).
+
+---
+
+### Сценарий 3: Проверка NUMA-локальности
+
+```bash
+# Без привязки
+aps --collection-mode=all --result-dir=aps_no_numa -- \
+    OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+aps --report aps_no_numa
+
+# С привязкой
+aps --collection-mode=all --result-dir=aps_numa -- \
+    I_MPI_PIN_DOMAIN=[0xffffffff00,0x00ffffffff] \
+    OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+aps --report aps_numa
+```
+
+Сравнить `NUMA ratio`: с привязкой должен быть < 5%.
+
+---
+
+### Сценарий 4: Scaling-тест по числу потоков
+
+```bash
+for t in 1 2 4 6 12; do
+    echo "=== threads=$t ==="
+    OMP_NUM_THREADS=$t ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+done
+```
+
+Построить график GFLOPS от числа потоков:
+- Линейный рост → отличная масштабируемость
+- Насыщение после 6 → упёрлись в память одного NUMA-узла
+- Плато после 6 → NUMA-эффект
+
+---
+
+### Сценарий 5: Сравнение режимов на одинаковом домене
+
+```bash
+# Все на 256³, b3=64
+./build/iso3dfd 256 256 256 16 8 64 100 sequential
+OMP_NUM_THREADS=12 ./build/iso3dfd 256 256 256 16 8 64 100 pure_omp
+OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 pure_mpi
+```
+
+---
+
+### Сценарий 6: Диагностика низкой производительности
+
+**Шаг 1 — APS all:**
+```bash
+aps --collection-mode=all --result-dir=aps_diag -- \
+    OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+aps --report aps_diag
+```
+
+| Симптом | Причина | Действие |
+|---|---|---|
+| CPI > 1.5 | Branch/data dependencies | Проверить код |
+| Memory Stalls > 40% | Memory-bound | Уменьшить b3 |
+| NUMA ratio > 15% | Данные на чужом сокете | `numactl` / `I_MPI_PIN_DOMAIN` |
+| Vectorization < 50% | Нет SIMD | Пересобрать с `-O3` |
+| OpenMP Imbalance > 15% | Дисбаланс потоков | `OMP_SCHEDULE=dynamic` или изменить b3 |
+
+**Шаг 2 — VTune hotspots:**
+```bash
+vtune -collect hotspots -knob sampling-mode=hw \
+    -r vtune_diag -- \
+    OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+```
+
+---
+
+### Сценарий 7: Полный цикл профилирования
+
+```bash
+# ── Подготовка ──
+source /opt/intel/oneapi/setvars.sh --force
+
+# ── Сборка (Release для замеров) ──
+cmake -S . -B build -DVERIFY_RESULTS=0
+cmake --build build -j$(nproc)
+
+# ── Чистый замер ──
+OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+
+# ── APS ──
+aps --collection-mode=all --result-dir=aps_full -- \
+    OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+aps --report aps_full
+
+# ── VTune (если нужен глубокий анализ) ──
+vtune -collect hotspots -knob sampling-mode=hw \
+    -r vtune_full -- \
+    OMP_NUM_THREADS=6 mpirun -n 2 ./build/iso3dfd 256 256 256 16 8 64 100 hybrid
+vtune -report summary -r vtune_full
+vtune -report hotspots -r vtune_full -limit 10
+```
+
+---
+
+## Результаты экспериментов
+
+### Условия
+
+- **CPU:** 2 × Intel Xeon X5675 (Westmere-EP, 3.07 GHz, 6 ядер/сокет)
+- **Кэш:** L1 32 КБ, L2 256 КБ, L3 12 МБ/сокет
+- **Память:** DDR3-1333 × 6 каналов (~64 ГБ/с пик)
+- **SIMD:** SSE4.2 (128-bit, 4 float/операция)
+- **Компилятор:** icpx 2026.1.1, `-O3 -fiopenmp`
+- **MPI:** Intel MPI 2021.18
+
+### Все запуски
+
+| # | Режим | Рангов | Потоков | Домен | b3 | Время | GFLOPS/ранг | GFLOPS всего | Speedup |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | sequential | 1 | 1 | 256³ | 64 | 44.9 с | 1.94 | 1.94 | 1.0× |
+| 2 | pure_mpi | 12 | 12 | 256×256×480 | 40 | 11.2 с | 0.78 | 9.36 | 4.8× |
+| 3 | pure_mpi | 12 | 12 | 256×256×960 | 80 | 25.4 с | 0.91 | 10.92 | 5.6× |
+| 4 | pure_mpi | 2 | 2 | 256×256×256 | 128 | 22.4 с | 1.82 | 3.64 | 1.9× |
+| 5 | hybrid 2×6 | 2 | 12 | 256×256×256 | 128 | 4.0 с | 10.16 | 20.32 | 10.5× |
+| 6 | hybrid 2×6 | 2 | 12 | 512×512×256 | 128 | 22.7 с | 7.64 | 15.28 | — |
+| 7 | pure_omp | 1 | 12 | 256³ | 64 | 4.4 с | — | 19.62 | 10.1× |
+
+### Ключевые выводы
+
+1. **Hybrid 2×6 — победитель:** 20.32 GFLOPS = насыщение DDR3 (~21 GFLOPS потолок)
+2. **Pure OMP 12 — близкий second:** 19.62 GFLOPS (−3.5%), без накладных расходов MPI
+3. **Pure MPI 12 — в 2× медленнее:** 10.92 GFLOPS — коммуникационные расходы на тонких доменах
+4. **Увеличение 256³ → 512³ убило hybrid:** 20.3 → 15.3 GFLOPS — насыщение памяти
+5. **b3 = 128 переполняет L3 на 60%** в hybrid (6 × 560 КБ = 3360 КБ > 2048 КБ)
+
+---
+
+## Устранение проблем
+
+### Ошибка: `n3 must be divisible by nprocs`
+
+```
+Error: n3 (256) must be divisible by nprocs (12)
+```
+
+**Причина:** `n3` не делится на число рангов.
+
+**Решение:** подобрать `n3` кратным числу рангов:
+
+| Рангов | Рекомендуемые n3 |
+|---|---|
+| 2 | 128, 256, 512 |
+| 3 | 252, 384, 504 |
+| 4 | 256, 512 |
+| 6 | 240, 480, 960 |
+| 12 | 240, 480, 960 |
+
+### Предупреждение: `argument unused during compilation: '-fno-alias'`
+
+```
+icpx: warning: argument unused during compilation: '-fno-alias'
+```
+
+**Причина:** icpx LLVM игнорирует флаг `-fno-alias` (управляет алиасингом сам).
+
+**Решение:** убрать `-fno-alias` из `CMakeLists.txt`:
+```cmake
+# Было:
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fiopenmp -fno-alias")
+# Стало:
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fiopenmp")
+```
+
+### Предупреждение: `setvars.sh has already been run`
+
+```
+:: WARNING: setvars.sh has already been run. Skipping re-execution.
+```
+
+**Причина:** окружение oneAPI уже активировано в текущей сессии.
+
+**Решение:** игнорировать (окружение уже настроено) или перезапустить:
+```bash
+source /opt/intel/oneapi/setvars.sh --force
+```
+
+### Ошибка: `Could NOT find MPI`
+
+```
+Could NOT find MPI (missing: MPI_CXX_FOUND)
+```
+
+**Причина:** CMake не видит Intel MPI.
+
+**Решение:**
+1. Убедиться, что `setvars.sh` выполнен в текущей сессии
+2. Проверить, что компилятор icpx выбран **до** `project()` в CMakeLists.txt:
+```cmake
+find_program(ICPX_BIN icpx)
+if(ICPX_BIN)
+    set(CMAKE_CXX_COMPILER ${ICPX_BIN})
+endif()
+# ... затем ...
+project(iso3dfd LANGUAGES CXX)
+find_package(MPI REQUIRED)
+```
+
+### Низкая производительность (< 5 GFLOPS)
+
+| Симптом | Возможная причина | Проверка |
+|---|---|---|
+| GFLOPS < 1 | Тонкий домен (n3/ранг < 32) | Увеличить n3 |
+| GFLOPS 1–5 | Нет OpenMP (pure_mpi с тонким доменом) | Перейти на hybrid |
+| GFLOPS падает при увеличении домена | Насыщение памяти / переполнение L3 | Уменьшить b3 |
+| GFLOPS ниже при 12 потоках, чем при 6 | Hyper-Threading + L3 contention | Использовать 6 потоков |
+| NUMA ratio > 15% | Данные на чужом сокете | `numactl --membind` или `I_MPI_PIN_DOMAIN` |
+
+### Бинарник не найден
+
+```bash
+# Проверить, что сборка прошла
+ls -lh build/iso3dfd
+
+# Если нет — пересобрать
+rm -rf build
+cmake -S . -B build -DVERIFY_RESULTS=0
+cmake --build build -j$(nproc)
+```

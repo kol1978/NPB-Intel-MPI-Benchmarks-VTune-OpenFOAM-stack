@@ -1,0 +1,221 @@
+
+# 1. Активируем oneAPI (обязательно для icpx + Intel MPI)
+source /opt/intel/oneapi/setvars.sh
+
+# 2. Чистим старый билд, если был
+rm -rf build
+
+# 3. Конфигурируем: исходники тут (.), билд в папке build
+cmake -S . -B build -DVERIFY_RESULTS=0
+
+# 4. Собираем: -j$(nproc) берёт все ядра (на твоём Xeon X5675 это 12 физических)
+cmake --build build -j$(nproc)
+
+
+-----------------------------------Для профилирования (VTune/APS) лучше сразу делать отдельную сборку:
+bash
+cmake -S . -B build-vtune -DVERIFY_RESULTS=1 -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-vtune -j$(nproc)
+
+Как теперь собирать
+1) Обычная расчётная сборка (на сервере с X5675 / Westmere)
+
+source /opt/intel/oneapi/setvars.sh --force
+rm -rf build
+cmake -S . -B build \
+    -DVERIFY_RESULTS=0 \
+    -DTARGET_ARCH=Westmere \
+    -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+
+
+2) Сборка для профилирования (VTune / APS)
+
+source /opt/intel/oneapi/setvars.sh --force
+rm -rf build-vtune
+cmake -S . -B build-vtune \
+    -DVERIFY_RESULTS=1 \
+    -DTARGET_ARCH=Generic \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build-vtune -j$(nproc)
+
+
+Почему TARGET_ARCH=Generic для VTune:
+Агрессивные флаги -xSSE4.2 / -xCORE-AVX* могут менять структуру циклов и маскировать реальные узкие места. Для профилирования лучше использовать «чистый» оптимизированный код.
+
+# Сборка (если ещё не сделана)
+rm -rf build-vtune-hotspots
+cmake -S . -B build-vtune-hotspots \
+    -DVERIFY_RESULTS=1 \
+    -DTARGET_ARCH=Generic \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build-vtune-hotspots -j$(nproc)
+
+# Профилирование (программный сэмпл, без sudo)
+vtune -collect hotspots \
+      -result-dir r000hs_generic \
+      -mode=sw \
+      numactl --membind=0 --cpunodebind=0 \
+      mpirun -np 12 ./build-vtune-hotspots/iso3dfd
+--------------------------------------------------------------сработает!!!!!!!!!!!
+
+rm -rf r000hs_generic
+
+vtune -collect hotspots \
+      -knob sampling-mode=sw \
+      -result-dir r000hs_generic \
+      -- ./build-vtune-hotspots/iso3dfd 256 256 256 64 64 64 100 sequential
+
+--------------------------------------------------------------сработает!!!!!!!!!!!
+
+export OMP_NUM_THREADS=1
+mpirun -np 12 ./build-vtune-hotspots/iso3dfd 256 256 480 64 64 64 100 hybrid
+
+
+--------------------------------------------------------------сработает!!!!!!!!!!!
+
+rm -rf r000hs_mpi
+export OMP_NUM_THREADS=1
+mpirun -np 12 ./vtune_wrapper.sh ./build-vtune-hotspots/iso3dfd 256 256 240 64 64 64 2000 hybrid
+
+Скрипт — это «костыль»: rank 0 запускается под VTune, остальные 11 рангов — напрямую. Работает, но профилирует только один ранг. Для симметричной задачи этого достаточно, но это не то, как VTune должен работать normally.
+
+Что показал профиль (уже видно из лога)
+У тебя в Top Hotspots для rank 0:
+
+stencil_point — 67.5 с (82.3%) — чистые вычисления.
+PMPI_Sendrecv — 10.6 с (13.0%) — коммуникации.
+Остальное — накладные расходы.
+Плюс в отчёте есть важная строка: MPI Busy Wait Time: 9.242 s. Это не «полезная работа», а время, когда процесс крутится в ожидании MPI-события (обычно на барьерах или ожидании сообщений).
+Что это значит для твоей задачи
+Вычисления всё ещё доминируют (82% времени), но коммуникации и ожидание уже очень заметны.
+Проблема не в том, что «всё ушло в MPI», а в том, что при маленькой локальной сетке (20 слоёв) доля коммуникаций становится большой, и появляется заметное время ожидания.
+Гибридный режим тут почти не помогает: у тебя OMP_NUM_THREADS=1, поэтому compute_omp — это просто служебные вызовы OpenMP, а не реальная многопоточность.
+=========================================================
+# Очистка старого билда
+rm -rf build
+
+# Сборка
+source /opt/intel/oneapi/setvars.sh
+mkdir build && cd build
+cmake -DVERIFY_RESULTS=0 ..
+make -j
+
+# Запуск (4 режима)
+./src/iso3dfd 256 256 256 16 8 64 100 sequential
+mpirun -n 12 ./src/iso3dfd 256 256 256 16 8 64 100 pure_mpi
+OMP_NUM_THREADS=6 mpirun -n 2 ./src/iso3dfd 256 256 256 16 8 64 100 hybrid
+OMP_NUM_THREADS=24 ./src/iso3dfd 256 256 256 16 8 64 100 pure_omp
+
+
+---------------------------Неверный расчёт (изначальный):
+
+L3 = 12 МБ (полный кэш сокета) → но при 6 потоках на поток достаётся 2 МБ
+2 массива (prev + next) → забыли vel, реально 3 массива
+Следствие: b3 = 256 был завышен в 2–4 раза
+Верный расчёт:
+
+L3/6 потоков = 2 МБ, 3 массива (prev + next + vel)
+С учётом halo: b3 = 64 → 304 КБ на поток (14.8%), суммарно 1824 КБ (87% от L3) ✓
+b3 = 128 → 560 КБ на поток, суммарно 3360 КБ → 160% от L3 — переполнение!
+Главное открытие
+В hybrid-режиме (2 ранга × 6 потоков) b3 = 128 переполняет L3 на 60%. Это объясняет, почему при увеличении домена до 512³ производительность упала — данные вытесняются в DRAM.
+
+
+---------------------------Проблема: kernel.yama.ptrace_scope
+Linux-ядро (с модулем YAMA) по умолчанию запрещает процессам использовать ptrace для.attach к другим процессам. VTune в режиме SW sampling использует ptrace (сигнал SIGPROF), и без правки — молча не собирает данные или падает с ошибкой.
+
+-----------Как проверить
+
+cat /proc/sys/kernel/yama/ptrace_scope
+
+Значение	Поведение
+0	classic ptrace — любой процесс может трассировать потомков (нужно для VTune SW)
+1	restricted — только родитель может трассировать (Ubuntu по умолчанию)
+2	admin-only — только root с CAP_SYS_PTRACE
+3	no ptrace — полностью запрещено
+Вариант 1: временно (до перезагрузки)
+
+# Без sudo — не сработает
+
+echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+
+---------------Вариант 2: постоянно (через sysctl)
+
+echo "kernel.yama.ptrace_scope = 0" | sudo tee /etc/sysctl.d/10-ptrace.conf
+sudo sysctl -p /etc/sysctl.d/10-ptrace.conf
+
+---------------Вариант 3: через скрипт (как в оригинальном run_vtune_hotspots.sh)
+
+#!/bin/bash
+# Сохраняем текущее значение
+SAVED_SCOPE=$(cat /proc/sys/kernel/yama/ptrace_scope)
+
+# Включаем
+echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope > /dev/null
+
+# Запускаем VTune
+vtune -collect hotspots -knob sampling-mode=sw \
+    --result-dir=./vtune_result \
+    -- mpirun -n 12 ./build-vtune/iso3dfd 256 256 256 16 8 64 100 hybrid
+
+# Возвращаем обратно
+echo $SAVED_SCOPE | sudo tee /proc/sys/kernel/yama/ptrace_scope > /dev/null
+
+-------------------------------------------------полное содержание run_vtune_ptrace.sh для проверки:
+bash
+#!/bin/bash
+# run_vtune_ptrace.sh
+# Запуск VTune с авто-включением ptrace_scope=0 и восстановлением
+# Использование: sudo ./run_vtune_ptrace.sh <binary> <args...>
+
+set -euo pipefail
+
+# ── Проверка root ──
+if [ "$EUID" -ne 0 ]; then
+    echo "Ошибка: требуется root. Запустите: sudo $0 $*"
+    exit 1
+fi
+
+# ── Сохраняем исходное значение ptrace_scope ──
+SAVED_SCOPE=$(cat /proc/sys/kernel/yama/ptrace_scope)
+echo "Текущий ptrace_scope: $SAVED_SCOPE → устанавливаю 0"
+
+# ── trap: восстановление при любом выходе (нормальном, ошибке, Ctrl+C) ──
+restore_ptrace() {
+    echo "$SAVED_SCOPE" > /proc/sys/kernel/yama/ptrace_scope
+    echo "ptrace_scope восстановлен: $(cat /proc/sys/kernel/yama/ptrace_scope)"
+}
+trap restore_ptrace EXIT
+
+# ── Устанавливаем 0 ──
+echo 0 > /proc/sys/kernel/yama/ptrace_scope
+
+# ── Активируем Intel oneAPI окружение ──
+source /opt/intel/oneapi/setvars.sh --force >/dev/null 2>&1 || true
+
+# ── Запускаем VTune ──
+RESULT_DIR="vtune_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$RESULT_DIR"
+
+vtune -collect hotspots \
+    -knob sampling-mode=sw \
+    -knob enable-characterization-insights=false \
+    -finalization-mode=deferred \
+    -result-dir "$RESULT_DIR" \
+    -- "$@"
+
+echo "Результат: $RESULT_DIR"
+----------------------------------------------------Ключевые особенности скрипта
+trap restore_ptrace EXIT — восстановление срабатывает всегда: нормальный выход, ошибка, Ctrl+C
+set -euo pipefail — скрипт падает при первой ошибке, но trap всё равно отрабатывает
+SAVED_SCOPE — запоминает исходное значение (1, 2 или 3) и возвращает именно его, а не жёстко 1
+-finalization-mode=deferred — отложенная финализация VTune (экономит ~20 сек)
+
+-----Использование
+
+# Запуск VTune с авто-управлением ptrace
+sudo ./run_vtune_ptrace.sh mpirun -n 12 ./build-vtune/iso3dfd 256 256 256 16 8 64 100 hybrid
+
+# Или одиночный запуск
+sudo ./run_vtune_ptrace.sh ./build-vtune/iso3dfd 256 256 256 16 8 64 100 sequential

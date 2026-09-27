@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/iso3dfd4MODES3BLOCKS/build-vtune-hotspots/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

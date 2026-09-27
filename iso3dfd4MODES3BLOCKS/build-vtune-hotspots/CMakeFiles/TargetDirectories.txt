@@ -1,0 +1,7 @@
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/iso3dfd4MODES3BLOCKS/build-vtune-hotspots/CMakeFiles/iso3dfd.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/iso3dfd4MODES3BLOCKS/build-vtune-hotspots/CMakeFiles/edit_cache.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/iso3dfd4MODES3BLOCKS/build-vtune-hotspots/CMakeFiles/rebuild_cache.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/iso3dfd4MODES3BLOCKS/build-vtune-hotspots/CMakeFiles/list_install_components.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/iso3dfd4MODES3BLOCKS/build-vtune-hotspots/CMakeFiles/install.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/iso3dfd4MODES3BLOCKS/build-vtune-hotspots/CMakeFiles/install/local.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/iso3dfd4MODES3BLOCKS/build-vtune-hotspots/CMakeFiles/install/strip.dir

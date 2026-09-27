@@ -1,0 +1,98 @@
+# ============================================================================
+# iso3dfd — 3D Isotropic Finite-Difference Solver (4 modes × 3 blocks)
+# ============================================================================
+# Компилятор:  Intel LLVM (icpx) 2026.1.1
+# MPI:         Intel MPI 2021.18
+# OpenMP:      Intel OpenMP (-fiopenmp)
+# CPU:         Intel Xeon X5675 (Westmere, SSE4.2, 2×6 ядер, 12 МБ L3)
+# ============================================================================
+
+cmake_minimum_required(VERSION 3.5)
+
+# ── Компилятор: icpx (Intel LLVM) ──────────────────────────────────────────
+# Устанавливаем ДО project(), чтобы CMake сразу идентифицировал icpx
+# и корректно настроил ABI, без fallback на g++.
+set(CMAKE_CXX_COMPILER "/opt/intel/oneapi/compiler/2026.1/bin/icpx")
+
+# ── Проект ─────────────────────────────────────────────────────────────────
+project(iso3dfd LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ── Опции ──────────────────────────────────────────────────────────────────
+option(VERIFY_RESULTS "Verify computation results (NaN/Inf check)" OFF)
+
+# ── Тип сборки по умолчанию ────────────────────────────────────────────────
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+# ── Флаги по типам сборки ──────────────────────────────────────────────────
+# Общие (нужны во всех режимах)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fiopenmp")
+
+# Release — максимальная оптимизация для бенчмарков и замеров
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+# RelWithDebInfo — для VTune/APS: оптимизация + отладочные символы
+#   -gline-tables-only          : минимальный debug-info (только строки)
+#   -fdebug-info-for-profiling  : точная корреляция профиля с исходным кодом
+#   -O2 (не -O0!)               : оптимизация сохраняется, профиль репрезентативен
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -gline-tables-only -fdebug-info-for-profiling")
+
+# Debug — полная отладка в gdb, без оптимизации
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+
+# ── Поиск MPI ──────────────────────────────────────────────────────────────
+find_package(MPI REQUIRED)
+
+# ── Поиск OpenMP ───────────────────────────────────────────────────────────
+find_package(OpenMP REQUIRED)
+
+# ── Исходники ──────────────────────────────────────────────────────────────
+set(SOURCES
+    src/iso3dfd.cpp
+    src/iso3dfd_driver.cpp
+    src/iso3dfd_solver.cpp
+    src/iso3dfd_grid.cpp
+)
+
+if(VERIFY_RESULTS)
+    list(APPEND SOURCES src/iso3dfd_verify.cpp)
+endif()
+
+# ── Заголовки ─────────────────────────────────────────────────────────────
+set(HEADERS
+    src/iso3dfd_driver.hpp
+    src/iso3dfd_solver.hpp
+    src/iso3dfd_grid.hpp
+)
+
+# ── Исполняемый файл ───────────────────────────────────────────────────────
+# Бинарник: build/iso3dfd (без поддиректории src/)
+add_executable(iso3dfd ${SOURCES} ${HEADERS})
+
+target_include_directories(iso3dfd PRIVATE src/ include/)
+
+target_link_libraries(iso3dfd PRIVATE
+    MPI::MPI_CXX
+    OpenMP::OpenMP_CXX
+)
+
+# ── Препроцессор ───────────────────────────────────────────────────────────
+if(VERIFY_RESULTS)
+    target_compile_definitions(iso3dfd PRIVATE VERIFY_RESULTS)
+endif()
+
+# ── Информационный вывод ───────────────────────────────────────────────────
+string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_UPPER)
+message(STATUS "────────────────────────────────────────────")
+message(STATUS "  iso3dfd 1.0")
+message(STATUS "  Compiler:       ${CMAKE_CXX_COMPILER}")
+message(STATUS "  Build type:     ${CMAKE_BUILD_TYPE}")
+message(STATUS "  CXX_FLAGS:      ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${BUILD_TYPE_UPPER}}")
+message(STATUS "  MPI:            ${MPI_CXX_COMPILER}")
+message(STATUS "  OpenMP:         ${OpenMP_CXX_FLAGS}")
+message(STATUS "  VERIFY_RESULTS: ${VERIFY_RESULTS}")
+message(STATUS "────────────────────────────────────────────")

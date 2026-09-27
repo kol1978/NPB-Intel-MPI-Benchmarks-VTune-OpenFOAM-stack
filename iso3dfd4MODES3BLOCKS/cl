@@ -1,0 +1,165 @@
+#!/bin/bash
+# clean-build.sh
+# Очистка сборочных директорий iso3dfd
+# Использование:
+#   ./clean-build.sh              — интерактивное меню
+#   ./clean-build.sh --all        — удалить все build-директории
+#   ./clean-build.sh --soft       — clean без удаления кэша (быстро)
+#   ./clean-build.sh --hard <dir> — rm -rf конкретной директории
+#   ./clean-build.sh --help       — справка
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Все известные build-директории
+BUILD_DIRS=("build" "build-vtune" "build-debug")
+
+show_help() {
+    cat <<EOF
+Использование: $0 [опция] [директория]
+
+Опции:
+  --all          Удалить все build-директории (rm -rf)
+  --soft         Очистить объектные файлы (cmake --target clean)
+  --hard <dir>   Удалить конкретную директорию (rm -rf)
+  --help         Эта справка
+
+Без аргументов — интерактивное меню.
+
+Доступные директории: ${BUILD_DIRS[*]}
+EOF
+}
+
+# ── Проверка существующих директорий ──
+existing_dirs=()
+for d in "${BUILD_DIRS[@]}"; do
+    [ -d "$SCRIPT_DIR/$d" ] && existing_dirs+=("$d")
+done
+
+if [ ${#existing_dirs[@]} -eq 0 ]; then
+    echo "Build-директории не найдены. Нечего чистить."
+    exit 0
+fi
+
+# ── Действия ──
+
+do_soft() {
+    echo "Мягкая очистка (cmake --target clean)..."
+    for d in "${existing_dirs[@]}"; do
+        echo "  clean: $d"
+        cmake --build "$SCRIPT_DIR/$d" --target clean 2>/dev/null || \
+            echo "    (пропуск — нет Makefile)"
+    done
+    echo "Готово. Объектные файлы удалены, кэш CMake сохранён."
+}
+
+do_hard() {
+    local target="$1"
+    if [ ! -d "$SCRIPT_DIR/$target" ]; then
+        echo "Ошибка: директория '$target' не найдена."
+        echo "Доступные: ${existing_dirs[*]}"
+        exit 1
+    fi
+    echo "Удаление $target..."
+    rm -rf "$SCRIPT_DIR/$target"
+    echo "Готово. $target удалена."
+}
+
+do_all() {
+    echo "Удаление всех build-директорий..."
+    for d in "${existing_dirs[@]}"; do
+        echo "  rm -rf $d"
+        rm -rf "$SCRIPT_DIR/$d"
+    done
+    echo "Готово. Все директории удалены."
+}
+
+# ── Разбор аргументов ──
+
+case "${1:-}" in
+    --help|-h)
+        show_help
+        exit 0
+        ;;
+    --all)
+        do_all
+        exit 0
+        ;;
+    --soft)
+        do_soft
+        exit 0
+        ;;
+    --hard)
+        if [ -z "${2:-}" ]; then
+            echo "Ошибка: укажите директорию. Доступные: ${existing_dirs[*]}"
+            exit 1
+        fi
+        do_hard "$2"
+        exit 0
+        ;;
+    "")
+        # ── Интерактивное меню ──
+        echo "═══════════════════════════════════════════════"
+        echo "  clean-build.sh — очистка сборки iso3dfd"
+        echo "═══════════════════════════════════════════════"
+        echo ""
+        echo "Найденные build-директории:"
+        echo ""
+        for i in "${!existing_dirs[@]}"; do
+            d="${existing_dirs[$i]}"
+            SIZE=$(du -sh "$SCRIPT_DIR/$d" 2>/dev/null | cut -f1)
+            printf "  %d) %-16s  (%s)\n" "$((i+1))" "$d" "$SIZE"
+        done
+        echo ""
+        echo "  ── Опции ──"
+        echo ""
+        echo "  s) Soft clean       — очистить .o во всех (кэш CMail сохраняется)"
+        echo "  a) All (rm -rf)     — удалить все build-директории"
+        echo "  h) Help             — справка"
+        echo "  q) Quit             — выход"
+        echo ""
+        read -rp "Выберите [1-${#existing_dirs[@]}/s/a/h/q]: " choice
+
+        case "$choice" in
+            s|S)
+                do_soft
+                ;;
+            a|A)
+                do_all
+                ;;
+            h|H)
+                echo ""
+                show_help
+                ;;
+            q|Q)
+                echo "Выход."
+                exit 0
+                ;;
+            *)
+                if [[ "$choice" =~ ^[0-9]+$ ]] && \
+                   [ "$choice" -ge 1 ] && \
+                   [ "$choice" -le ${#existing_dirs[@]} ]; then
+                    d="${existing_dirs[$((choice-1))]}"
+                    echo ""
+                    echo "Удалить $d? [y/N]: "
+                    read -rp "> " confirm
+                    case "$confirm" in
+                        y|Y) do_hard "$d" ;;
+                        *)   echo "Отмена." ;;
+                    esac
+                else
+                    echo "Неверный выбор."
+                    exit 1
+                fi
+                ;;
+        esac
+        ;;
+    *)
+        echo "Неизвестная опция: $1"
+        echo ""
+        show_help
+        exit 1
+        ;;
+esac
+
