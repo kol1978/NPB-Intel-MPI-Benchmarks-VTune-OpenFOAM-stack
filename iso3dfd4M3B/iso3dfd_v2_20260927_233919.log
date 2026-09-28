@@ -1,0 +1,265 @@
+========================================
+iso3dfd V2 — тестирование нового кода
+Дата:    2026-09-27 23:39:19
+Сервер:  kol-serv
+Binary:  ./build/iso3dfd
+========================================
+
+========================================
+>>> Тест 1: sequential (256³, 100 итер)
+--- Переменные окружения ---
+OMP_NUM_THREADS=<unset>
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+I_MPI_PIN_ORDER=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 64 100 sequential
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         44.340 s
+Performance:  1.96 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> Тест 2: pure_omp 12 (256³, 100 итер)
+--- Переменные окружения ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+I_MPI_PIN_ORDER=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 64 100 pure_omp
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0
+[v2] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         7.344 s
+Performance:  11.86 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> Тест 3: pure_omp 12 (256³, 2000 итер)
+--- Переменные окружения ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+I_MPI_PIN_ORDER=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 64 2000 pure_omp
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0
+[v2] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         139.418 s
+Performance:  12.49 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> Тест 4: hybrid 2×6 (256³, 100 итер)
+--- Переменные окружения ---
+OMP_NUM_THREADS=6
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -np 2 ./build/iso3dfd 256 256 256 64 64 64 100 hybrid
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0
+[v2] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=2  threads/rank=6  nz_local=128  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         7.460 s
+Performance:  11.67 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> Тест 5: hybrid 1×12 (256³, 100 итер)
+--- Переменные окружения ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -np 1 ./build/iso3dfd 256 256 256 64 64 64 100 hybrid
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0
+[v2] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         6.863 s
+Performance:  12.69 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> Тест 6: pure_mpi 12 (256×256×480, 100 итер)
+--- Переменные окружения ---
+OMP_NUM_THREADS=1
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -np 12 ./build/iso3dfd 256 256 480 64 64 64 100 pure_mpi
+--- Вывод ---
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         9.963 s
+Performance:  16.90 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> Тест 7: hybrid 2×6 (256×256×480, 100 итер)
+--- Переменные окружения ---
+OMP_NUM_THREADS=6
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -np 2 ./build/iso3dfd 256 256 480 64 64 64 100 hybrid
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0
+[v2] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=2  threads/rank=6  nz_local=240  nz_global=480
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         10.244 s
+Performance:  16.44 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> Тест 8: hybrid 2×6 (512×512×256, 100 итер)
+--- Переменные окружения ---
+OMP_NUM_THREADS=6
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -np 2 ./build/iso3dfd 512 512 256 64 64 64 100 hybrid
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0
+[v2] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=2  threads/rank=6  nz_local=128  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        512 x 512 x 256
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         25.707 s
+Performance:  14.47 GFLOPS
+Lattice:      59043840 points/iteration
+
+========================================
+>>> Тест 9: pure_omp 12 (256³, 2000 итер, b2_l2=56)
+--- Переменные окружения ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+I_MPI_PIN_ORDER=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 64 2000 pure_omp
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=56  tb_steps=0
+[v2] 2D LC = 238 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         133.700 s
+Performance:  13.03 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> Тест 10: hybrid 1×12 (256×256×480, 2000 итер)
+--- Переменные окружения ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+I_MPI_PIN_ORDER=compact
+--- Команда ---
+mpirun -np 1 ./build/iso3dfd 256 256 480 64 64 64 2000 hybrid
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0
+[v2] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=1  threads/rank=12  nz_local=480  nz_global=480
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         203.779 s
+Performance:  16.53 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+Все запуски завершены: 2026-09-27 23:49:13
+Лог: iso3dfd_v2_20260927_233919.log
+========================================

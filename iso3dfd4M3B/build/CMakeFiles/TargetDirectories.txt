@@ -1,0 +1,7 @@
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd4M3B/build/CMakeFiles/iso3dfd.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd4M3B/build/CMakeFiles/edit_cache.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd4M3B/build/CMakeFiles/rebuild_cache.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd4M3B/build/CMakeFiles/list_install_components.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd4M3B/build/CMakeFiles/install.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd4M3B/build/CMakeFiles/install/local.dir
+/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd4M3B/build/CMakeFiles/install/strip.dir

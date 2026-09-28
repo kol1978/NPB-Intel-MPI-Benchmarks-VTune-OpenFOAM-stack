@@ -1,0 +1,132 @@
+========================================
+iso3dfd V2 — tuning b2_l2
+Дата: 2026-09-28 09:25:46
+Сервер: kol-serv
+Binary: ./build/iso3dfd
+Тест: 256×256×256, 2000 итер, pure_omp 12
+========================================
+
+========================================
+>>> b2_l2=32
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+ISO3DFD_B2_L2=32
+--- Команда ---
+ISO3DFD_B2_L2=32 ./build/iso3dfd 256 256 256 64 64 64 2000 pure_omp
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=32  tb_steps=0
+[v2] 2D LC = 136 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         164.022 s
+Performance:  10.62 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> b2_l2=40
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+ISO3DFD_B2_L2=40
+--- Команда ---
+ISO3DFD_B2_L2=40 ./build/iso3dfd 256 256 256 64 64 64 2000 pure_omp
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=40  tb_steps=0
+[v2] 2D LC = 170 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         137.122 s
+Performance:  12.70 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> b2_l2=48
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+ISO3DFD_B2_L2=48
+--- Команда ---
+ISO3DFD_B2_L2=48 ./build/iso3dfd 256 256 256 64 64 64 2000 pure_omp
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0
+[v2] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         137.013 s
+Performance:  12.71 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> b2_l2=56
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+ISO3DFD_B2_L2=56
+--- Команда ---
+ISO3DFD_B2_L2=56 ./build/iso3dfd 256 256 256 64 64 64 2000 pure_omp
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=56  tb_steps=0
+[v2] 2D LC = 238 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         136.064 s
+Performance:  12.80 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> b2_l2=64
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+ISO3DFD_B2_L2=64
+--- Команда ---
+ISO3DFD_B2_L2=64 ./build/iso3dfd 256 256 256 64 64 64 2000 pure_omp
+--- Вывод ---
+[v2] b1=64 b2=64 b3=64  b2_l2=64  tb_steps=0
+[v2] 2D LC = 272 KB (L2 budget: 256 KB, reserve: 80%)
+[v2] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         136.335 s
+Performance:  12.78 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+Tuning завершён: 2026-09-28 09:37:39
+Лог: iso3dfd_b2_l2_tuning_20260928_092546.log
+========================================

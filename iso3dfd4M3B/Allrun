@@ -1,0 +1,179 @@
+#!/bin/bash
+set -e
+
+# ===========================================================================
+# iso3dfd V2 — тестирование нового кода (Z-streaming + L2 micro-block)
+# Сервер: kol-serv (X5675, 2×6 ядер = 12 физических, 24 логических)
+# ===========================================================================
+
+BINARY="./build/iso3dfd"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG="iso3dfd_v2_${TIMESTAMP}.log"
+
+echo "========================================" | tee "$LOG"
+echo "iso3dfd V2 — тестирование нового кода" | tee -a "$LOG"
+echo "Дата:    $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$LOG"
+echo "Сервер:  $(hostname)" | tee -a "$LOG"
+echo "Binary:  $BINARY" | tee -a "$LOG"
+echo "========================================" | tee -a "$LOG"
+echo "" | tee -a "$LOG"
+
+# Функция очистки окружения
+clean_env() {
+    unset OMP_NUM_THREADS
+    unset OMP_PROC_BIND
+    unset OMP_PLACES
+    unset I_MPI_PIN
+    unset I_MPI_PIN_DOMAIN
+    unset I_MPI_PIN_ORDER
+    unset KMP_AFFINITY
+}
+
+# Функция запуска с логированием
+run_test() {
+    local label="$1"
+    echo "========================================" | tee -a "$LOG"
+    echo ">>> $label" | tee -a "$LOG"
+    echo "--- Переменные окружения ---" | tee -a "$LOG"
+    echo "OMP_NUM_THREADS=${OMP_NUM_THREADS:-<unset>}" | tee -a "$LOG"
+    echo "OMP_PROC_BIND=${OMP_PROC_BIND:-<unset>}" | tee -a "$LOG"
+    echo "OMP_PLACES=${OMP_PLACES:-<unset>}" | tee -a "$LOG"
+    echo "I_MPI_PIN=${I_MPI_PIN:-<unset>}" | tee -a "$LOG"
+    echo "I_MPI_PIN_DOMAIN=${I_MPI_PIN_DOMAIN:-<unset>}" | tee -a "$LOG"
+    echo "I_MPI_PIN_ORDER=${I_MPI_PIN_ORDER:-<unset>}" | tee -a "$LOG"
+    echo "--- Команда ---" | tee -a "$LOG"
+    echo "$2" | tee -a "$LOG"
+    echo "--- Вывод ---" | tee -a "$LOG"
+    eval "$2" 2>&1 | tee -a "$LOG"
+    echo "" | tee -a "$LOG"
+}
+
+# ==========================================
+# Тест 1: sequential (baseline, 1 поток)
+# ==========================================
+clean_env
+run_test "Тест 1: sequential (256³, 100 итер)" \
+    "$BINARY 256 256 256 64 64 64 100 sequential"
+
+# ==========================================
+# Тест 2: pure_omp 12 (256³)
+# 12 потоков = все физические ядра
+# ==========================================
+clean_env
+export OMP_NUM_THREADS=12
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+run_test "Тест 2: pure_omp 12 (256³, 100 итер)" \
+    "$BINARY 256 256 256 64 64 64 100 pure_omp"
+
+# ==========================================
+# Тест 3: pure_omp 12 (256³, 2000 итер)
+# Длинный прогон — стабильный результат
+# ==========================================
+clean_env
+export OMP_NUM_THREADS=12
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+run_test "Тест 3: pure_omp 12 (256³, 2000 итер)" \
+    "$BINARY 256 256 256 64 64 64 2000 pure_omp"
+
+# ==========================================
+# Тест 4: hybrid 2×6 (256³)
+# 2 MPI ранга (по сокетам) × 6 OpenMP потоков
+# ==========================================
+clean_env
+export OMP_NUM_THREADS=6
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+export I_MPI_PIN=on
+export I_MPI_PIN_DOMAIN=0x3F,0xFC0
+export I_MPI_PIN_ORDER=compact
+run_test "Тест 4: hybrid 2×6 (256³, 100 итер)" \
+    "mpirun -np 2 $BINARY 256 256 256 64 64 64 100 hybrid"
+
+# ==========================================
+# Тест 5: hybrid 1×12 (256³)
+# 1 MPI ранг × 12 OpenMP потоков
+# ==========================================
+clean_env
+export OMP_NUM_THREADS=12
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+export I_MPI_PIN=on
+export I_MPI_PIN_DOMAIN=0xFFF
+export I_MPI_PIN_ORDER=compact
+run_test "Тест 5: hybrid 1×12 (256³, 100 итер)" \
+    "mpirun -np 1 $BINARY 256 256 256 64 64 64 100 hybrid"
+
+# ==========================================
+# Тест 6: pure_mpi 12 (256×256×480)
+# 12 MPI рангов, n3=480 делится на 12 = 40
+# ==========================================
+clean_env
+export OMP_NUM_THREADS=1
+export I_MPI_PIN=on
+export I_MPI_PIN_DOMAIN=0xFFF
+export I_MPI_PIN_ORDER=compact
+run_test "Тест 6: pure_mpi 12 (256×256×480, 100 итер)" \
+    "mpirun -np 12 $BINARY 256 256 480 64 64 64 100 pure_mpi"
+
+# ==========================================
+# Тест 7: hybrid 2×6 (256×256×480)
+# 2 MPI ранга × 6 OpenMP потоков, n3=480/2=240
+# ==========================================
+clean_env
+export OMP_NUM_THREADS=6
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+export I_MPI_PIN=on
+export I_MPI_PIN_DOMAIN=0x3F,0xFC0
+export I_MPI_PIN_ORDER=compact
+run_test "Тест 7: hybrid 2×6 (256×256×480, 100 итер)" \
+    "mpirun -np 2 $BINARY 256 256 480 64 64 64 100 hybrid"
+
+# ==========================================
+# Тест 8: hybrid 2×6 (512×512×256)
+# Большая сетка, n3=256/2=128
+# ==========================================
+clean_env
+export OMP_NUM_THREADS=6
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+export I_MPI_PIN=on
+export I_MPI_PIN_DOMAIN=0x3F,0xFC0
+export I_MPI_PIN_ORDER=compact
+run_test "Тест 8: hybrid 2×6 (512×512×256, 100 итер)" \
+    "mpirun -np 2 $BINARY 512 512 256 64 64 64 100 hybrid"
+
+# ==========================================
+# Тест 9: pure_omp 12 (256³, 2000 итер, b2_l2=56)
+# Эксперимент с увеличенным L2 micro-block
+# ==========================================
+clean_env
+export OMP_NUM_THREADS=12
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+export ISO3DFD_B2_L2=56
+run_test "Тест 9: pure_omp 12 (256³, 2000 итер, b2_l2=56)" \
+    "$BINARY 256 256 256 64 64 64 2000 pure_omp"
+unset ISO3DFD_B2_L2
+
+# ==========================================
+# Тест 10: hybrid 1×12 (256×256×480, 2000 итер)
+# Длинный прогон с большой сеткой
+# ==========================================
+clean_env
+export OMP_NUM_THREADS=12
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+export I_MPI_PIN=on
+export I_MPI_PIN_DOMAIN=0xFFF
+export I_MPI_PIN_ORDER=compact
+run_test "Тест 10: hybrid 1×12 (256×256×480, 2000 итер)" \
+    "mpirun -np 1 $BINARY 256 256 480 64 64 64 2000 hybrid"
+
+# ==========================================
+echo "========================================" | tee -a "$LOG"
+echo "Все запуски завершены: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$LOG"
+echo "Лог: $LOG" | tee -a "$LOG"
+echo "========================================" | tee -a "$LOG"
