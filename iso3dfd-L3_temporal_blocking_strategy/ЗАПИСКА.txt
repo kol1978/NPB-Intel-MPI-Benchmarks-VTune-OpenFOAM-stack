@@ -1,0 +1,25 @@
+ 
+echo "=== .cpp ==="
+find . -type f -name "*.cpp" ! -path "./build/*" | xargs wc -l
+
+echo "=== .h / .hpp ==="
+find . -type f \( -name "*.h" -o -name "*.hpp" \) ! -path "./build/*" | xargs wc -l
+----------------------------
+find . -type f -name "*.cpp" ! -path "./build/*" | xargs wc -l
+
+echo "=== .h / .hpp ==="
+find . -type f \( -name "*.h" -o -name "*.hpp" \) ! -path "./build/*" | xargs wc -l
+=== .cpp ===
+  155 ./src/iso3dfd_driver.cpp
+  169 ./src/iso3dfd.cpp
+   36 ./src/iso3dfd_verify.cpp
+   96 ./src/iso3dfd_grid.cpp
+  218 ./src/iso3dfd_solver.cpp
+  674 total
+=== .h / .hpp ===
+  24 ./include/iso3dfd_driver.hpp
+  47 ./include/iso3dfd.h
+  86 ./include/iso3dfd_solver.hpp
+  27 ./include/iso3dfd_grid.hpp
+ 184 total
+

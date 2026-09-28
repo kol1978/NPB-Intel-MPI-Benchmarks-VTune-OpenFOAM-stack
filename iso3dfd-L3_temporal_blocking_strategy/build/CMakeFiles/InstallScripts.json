@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/kol/OpenFOAM/kol-v2312/applications/PARALLELISM/NPB-Intel-MPI-Benchmarks-VTune-OpenFOAM-stack-My-github/iso3dfd-L3_temporal_blocking_strategy/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

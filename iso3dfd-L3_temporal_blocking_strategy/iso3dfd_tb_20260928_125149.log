@@ -1,0 +1,593 @@
+========================================
+iso3dfd 2.0 — baseline + temporal blocking
+Дата:    2026-09-28 12:51:49
+Сервер:  kol-serv
+Binary:  ./build/iso3dfd
+========================================
+
+########## ЧАСТЬ A: BASELINE (TB=0) ##########
+
+========================================
+>>> A1: sequential (256³, 100 итер)
+--- Окружение ---
+OMP_NUM_THREADS=<unset>
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+ISO3DFD_TB_STEPS=<unset>
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 64 100 sequential
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=0  halo=8
+[v2-tb] ranks=1  threads/rank=1  nz_local=256  nz_global=256
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0  halo=8
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] ranks=1  threads/rank=auto  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         43.456 s
+Performance:  2.00 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> A2: pure_omp 12 (256³, 100 итер)
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+ISO3DFD_TB_STEPS=<unset>
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 64 100 pure_omp
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=0  halo=8
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0  halo=8
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         7.391 s
+Performance:  11.78 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> A3: pure_omp 12 (256³, 2000 итер) — BASELINE
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+ISO3DFD_TB_STEPS=<unset>
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 64 2000 pure_omp
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=0  halo=8
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0  halo=8
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         133.494 s
+Performance:  13.05 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> A4: hybrid 2×6 (256³, 100 итер)
+--- Окружение ---
+OMP_NUM_THREADS=6
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+ISO3DFD_TB_STEPS=<unset>
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+mpirun -np 2 ./build/iso3dfd 256 256 256 64 64 64 100 hybrid
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=0  halo=8
+[v2-tb] ranks=2  threads/rank=6  nz_local=128  nz_global=256
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0  halo=8
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] ranks=2  threads/rank=6  nz_local=128  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         6.881 s
+Performance:  12.66 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> A5: hybrid 1×12 (256×256×480, 2000 итер) — BASELINE
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+ISO3DFD_TB_STEPS=<unset>
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+mpirun -np 1 ./build/iso3dfd 256 256 480 64 64 64 2000 hybrid
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=0  halo=8
+[v2-tb] ranks=1  threads/rank=12  nz_local=480  nz_global=480
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0  halo=8
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] ranks=1  threads/rank=12  nz_local=480  nz_global=480
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         201.933 s
+Performance:  16.68 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> A6: hybrid 2×6 (256×256×480, 2000 итер) — BASELINE
+--- Окружение ---
+OMP_NUM_THREADS=6
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+ISO3DFD_TB_STEPS=<unset>
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+mpirun -np 2 ./build/iso3dfd 256 256 480 64 64 64 2000 hybrid
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=0  halo=8
+[v2-tb] ranks=2  threads/rank=6  nz_local=240  nz_global=480
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0  halo=8
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] ranks=2  threads/rank=6  nz_local=240  nz_global=480
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         199.348 s
+Performance:  16.89 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> A7: pure_mpi 12 (256×256×480, 2000 итер) — BASELINE
+--- Окружение ---
+OMP_NUM_THREADS=1
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+ISO3DFD_TB_STEPS=<unset>
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+mpirun -np 12 ./build/iso3dfd 256 256 480 64 64 64 2000 pure_mpi
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=0  halo=8
+[v2-tb] ranks=12  threads/rank=1  nz_local=40  nz_global=480
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=0  halo=8
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] ranks=12  threads/rank=1  nz_local=40  nz_global=480
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         190.965 s
+Performance:  17.63 GFLOPS
+Lattice:      26726400 points/iteration
+
+########## ЧАСТЬ B: TB N=4 (halo=40, b3=64) ##########
+
+========================================
+>>> B1: TB N=4, pure_omp 12 (256³, 100 итер)
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+ISO3DFD_TB_STEPS=4
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 64 100 pure_omp
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=4  halo=40
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=4  halo=40
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 320 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=25 (niter=100 / tb_steps=4), rem=0
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         7.139 s
+Performance:  12.20 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> B2: TB N=4, pure_omp 12 (256³, 2000 итер)
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+ISO3DFD_TB_STEPS=4
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 64 2000 pure_omp
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=4  halo=40
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=4  halo=40
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 320 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=500 (niter=2000 / tb_steps=4), rem=0
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         131.863 s
+Performance:  13.21 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> B3: TB N=4, hybrid 1×12 (256×256×480, 2000 итер)
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+ISO3DFD_TB_STEPS=4
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+mpirun -np 1 ./build/iso3dfd 256 256 480 64 64 64 2000 hybrid
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=4  halo=40
+[v2-tb] ranks=1  threads/rank=12  nz_local=480  nz_global=480
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=4  halo=40
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 320 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=500 (niter=2000 / tb_steps=4), rem=0
+[v2-tb] ranks=1  threads/rank=12  nz_local=480  nz_global=480
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         200.409 s
+Performance:  16.80 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> B4: TB N=4, hybrid 2×6 (256×256×480, 2000 итер)
+--- Окружение ---
+OMP_NUM_THREADS=6
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+ISO3DFD_TB_STEPS=4
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+mpirun -np 2 ./build/iso3dfd 256 256 480 64 64 64 2000 hybrid
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=4  halo=40
+[v2-tb] ranks=2  threads/rank=6  nz_local=240  nz_global=480
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=4  halo=40
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 320 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=500 (niter=2000 / tb_steps=4), rem=0
+[v2-tb] ranks=2  threads/rank=6  nz_local=240  nz_global=480
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         182.236 s
+Performance:  18.48 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> B5: TB N=4, pure_mpi 12 (256×256×480, 2000 итер)
+--- Окружение ---
+OMP_NUM_THREADS=1
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+ISO3DFD_TB_STEPS=4
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+mpirun -np 12 ./build/iso3dfd 256 256 480 64 64 64 2000 pure_mpi
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=4  halo=40
+[v2-tb] ranks=12  threads/rank=1  nz_local=40  nz_global=480
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=48  tb_steps=4  halo=40
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 320 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=500 (niter=2000 / tb_steps=4), rem=0
+[v2-tb] ranks=12  threads/rank=1  nz_local=40  nz_global=480
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         89.846 s
+Performance:  37.48 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> B6: TB N=4, pure_omp 12, b2_l2=56 (256³, 2000 итер)
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+ISO3DFD_TB_STEPS=4
+ISO3DFD_B2_L2=56
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 64 2000 pure_omp
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=64  tb_steps=4  halo=40
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+[v2-tb] b1=64 b2=64 b3=64  b2_l2=56  tb_steps=4  halo=40
+[v2-tb] 2D LC = 238 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 320 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=500 (niter=2000 / tb_steps=4), rem=0
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 64
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         132.106 s
+Performance:  13.19 GFLOPS
+Lattice:      13824000 points/iteration
+
+########## ЧАСТЬ C: TB N=8 (halo=72, b3=128) ##########
+
+========================================
+>>> C1: TB N=8, pure_omp 12 (256³, 100 итер, b3=128)
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+ISO3DFD_TB_STEPS=8
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 128 100 pure_omp
+--- Вывод ---
+Warning: niter (100) not divisible by tb_steps (8), last wave will be partial
+[v2-tb] b1=64 b2=64 b3=128  tb_steps=8  halo=72
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+[v2-tb] b1=64 b2=64 b3=128  b2_l2=48  tb_steps=8  halo=72
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 384 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=12 (niter=100 / tb_steps=8), rem=4
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 128
+Iterations:  100
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         6.812 s
+Performance:  12.79 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> C2: TB N=8, pure_omp 12 (256³, 2000 итер, b3=128)
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+ISO3DFD_TB_STEPS=8
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+./build/iso3dfd 256 256 256 64 64 128 2000 pure_omp
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=128  tb_steps=8  halo=72
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+[v2-tb] b1=64 b2=64 b3=128  b2_l2=48  tb_steps=8  halo=72
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 384 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=250 (niter=2000 / tb_steps=8), rem=0
+[v2-tb] ranks=1  threads/rank=12  nz_local=256  nz_global=256
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 256
+Block:       64 x 64 x 128
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         132.105 s
+Performance:  13.19 GFLOPS
+Lattice:      13824000 points/iteration
+
+========================================
+>>> C3: TB N=8, hybrid 1×12 (256×256×480, 2000 итер, b3=128)
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+ISO3DFD_TB_STEPS=8
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+mpirun -np 1 ./build/iso3dfd 256 256 480 64 64 128 2000 hybrid
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=128  tb_steps=8  halo=72
+[v2-tb] ranks=1  threads/rank=12  nz_local=480  nz_global=480
+[v2-tb] b1=64 b2=64 b3=128  b2_l2=48  tb_steps=8  halo=72
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 384 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=250 (niter=2000 / tb_steps=8), rem=0
+[v2-tb] ranks=1  threads/rank=12  nz_local=480  nz_global=480
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 128
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         231.228 s
+Performance:  14.56 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> C4: TB N=8, hybrid 2×6 (256×256×480, 2000 итер, b3=128)
+--- Окружение ---
+OMP_NUM_THREADS=6
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0x3F,0xFC0
+ISO3DFD_TB_STEPS=8
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+mpirun -np 2 ./build/iso3dfd 256 256 480 64 64 128 2000 hybrid
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=128  tb_steps=8  halo=72
+[v2-tb] ranks=2  threads/rank=6  nz_local=240  nz_global=480
+[v2-tb] b1=64 b2=64 b3=128  b2_l2=48  tb_steps=8  halo=72
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 384 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=250 (niter=2000 / tb_steps=8), rem=0
+[v2-tb] ranks=2  threads/rank=6  nz_local=240  nz_global=480
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 480
+Block:       64 x 64 x 128
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         240.330 s
+Performance:  14.01 GFLOPS
+Lattice:      26726400 points/iteration
+
+========================================
+>>> C5: TB N=8, pure_mpi 12 (256×256×528, 2000 итер, b3=128)
+--- Окружение ---
+OMP_NUM_THREADS=1
+OMP_PROC_BIND=<unset>
+OMP_PLACES=<unset>
+I_MPI_PIN=on
+I_MPI_PIN_DOMAIN=0xFFF
+ISO3DFD_TB_STEPS=8
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+mpirun -np 12 ./build/iso3dfd 256 256 528 64 64 128 2000 pure_mpi
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=128  tb_steps=8  halo=72
+[v2-tb] ranks=12  threads/rank=1  nz_local=44  nz_global=528
+[v2-tb] b1=64 b2=64 b3=128  b2_l2=48  tb_steps=8  halo=72
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 384 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=250 (niter=2000 / tb_steps=8), rem=0
+[v2-tb] ranks=12  threads/rank=1  nz_local=44  nz_global=528
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        256 x 256 x 528
+Block:       64 x 64 x 128
+Iterations:  2000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         58.939 s
+Performance:  63.05 GFLOPS
+Lattice:      29491200 points/iteration
+
+========================================
+>>> C6: TB N=8, pure_omp 12 (512³, 1000 итер, b3=128)
+--- Окружение ---
+OMP_NUM_THREADS=12
+OMP_PROC_BIND=close
+OMP_PLACES=cores
+I_MPI_PIN=<unset>
+I_MPI_PIN_DOMAIN=<unset>
+ISO3DFD_TB_STEPS=8
+ISO3DFD_B2_L2=<unset>
+--- Команда ---
+./build/iso3dfd 512 512 512 64 64 128 1000 pure_omp
+--- Вывод ---
+[v2-tb] b1=64 b2=64 b3=128  tb_steps=8  halo=72
+[v2-tb] ranks=1  threads/rank=12  nz_local=512  nz_global=512
+[v2-tb] b1=64 b2=64 b3=128  b2_l2=48  tb_steps=8  halo=72
+[v2-tb] 2D LC = 204 KB (L2 budget: 256 KB, reserve: 80%)
+[v2-tb] TB working set = 384 KB (L3 budget/stream: ~1.75 MB)
+[v2-tb] waves=125 (niter=1000 / tb_steps=8), rem=0
+[v2-tb] ranks=1  threads/rank=12  nz_local=512  nz_global=512
+iso3dfd — 3D isotropic finite-difference solver
+Grid:        512 x 512 x 512
+Block:       64 x 64 x 128
+Iterations:  1000
+Half-length: 8 (16th-order stencil)
+------------------------------------------------
+------------------------------------------------
+Time:         492.130 s
+Performance:  15.62 GFLOPS
+Lattice:      122023936 points/iteration
+
+========================================
+Все запуски завершены: 2026-09-28 13:36:50
+Лог: iso3dfd_tb_20260928_125149.log
+========================================

@@ -1,0 +1,213 @@
+#!/bin/bash
+set -e
+
+# ===========================================================================
+# iso3dfd 2.0 — бенчмарк: baseline + L3 temporal blocking
+# Сервер: kol-serv (Xeon X5675 Westmere, 2×6 = 12 физических ядер)
+# ===========================================================================
+
+BINARY="./build/iso3dfd"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG="iso3dfd_tb_${TIMESTAMP}.log"
+
+echo "========================================" | tee "$LOG"
+echo "iso3dfd 2.0 — baseline + temporal blocking" | tee -a "$LOG"
+echo "Дата:    $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$LOG"
+echo "Сервер:  $(hostname)" | tee -a "$LOG"
+echo "Binary:  $BINARY" | tee -a "$LOG"
+echo "========================================" | tee -a "$LOG"
+echo "" | tee -a "$LOG"
+
+clean_env() {
+    unset OMP_NUM_THREADS OMP_PROC_BIND OMP_PLACES
+    unset I_MPI_PIN I_MPI_PIN_DOMAIN I_MPI_PIN_ORDER
+    unset KMP_AFFINITY
+    unset ISO3DFD_TB_STEPS ISO3DFD_B2_L2
+}
+
+run_test() {
+    local label="$1"
+    echo "========================================" | tee -a "$LOG"
+    echo ">>> $label" | tee -a "$LOG"
+    echo "--- Окружение ---" | tee -a "$LOG"
+    echo "OMP_NUM_THREADS=${OMP_NUM_THREADS:-<unset>}" | tee -a "$LOG"
+    echo "OMP_PROC_BIND=${OMP_PROC_BIND:-<unset>}" | tee -a "$LOG"
+    echo "OMP_PLACES=${OMP_PLACES:-<unset>}" | tee -a "$LOG"
+    echo "I_MPI_PIN=${I_MPI_PIN:-<unset>}" | tee -a "$LOG"
+    echo "I_MPI_PIN_DOMAIN=${I_MPI_PIN_DOMAIN:-<unset>}" | tee -a "$LOG"
+    echo "ISO3DFD_TB_STEPS=${ISO3DFD_TB_STEPS:-<unset>}" | tee -a "$LOG"
+    echo "ISO3DFD_B2_L2=${ISO3DFD_B2_L2:-<unset>}" | tee -a "$LOG"
+    echo "--- Команда ---" | tee -a "$LOG"
+    echo "$2" | tee -a "$LOG"
+    echo "--- Вывод ---" | tee -a "$LOG"
+    eval "$2" 2>&1 | tee -a "$LOG"
+    echo "" | tee -a "$LOG"
+}
+
+# ===========================================================================
+# ЧАСТЬ A: BASELINE (без temporal blocking)
+# ===========================================================================
+echo "########## ЧАСТЬ A: BASELINE (TB=0) ##########" | tee -a "$LOG"
+echo "" | tee -a "$LOG"
+
+# ── A1: sequential (1 поток) ──────────────────────────────────────────────
+clean_env
+run_test "A1: sequential (256³, 100 итер)" \
+    "$BINARY 256 256 256 64 64 64 100 sequential"
+
+# ── A2: pure_omp 12 (256³, 100 итер) — быстрый прогон ─────────────────────
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+run_test "A2: pure_omp 12 (256³, 100 итер)" \
+    "$BINARY 256 256 256 64 64 64 100 pure_omp"
+
+# ── A3: pure_omp 12 (256³, 2000 итер) — стабильный baseline ────────────────
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+run_test "A3: pure_omp 12 (256³, 2000 итер) — BASELINE" \
+    "$BINARY 256 256 256 64 64 64 2000 pure_omp"
+
+# ── A4: hybrid 2×6 (256³, 100 итер) ───────────────────────────────────────
+clean_env
+export OMP_NUM_THREADS=6 OMP_PROC_BIND=close OMP_PLACES=cores
+export I_MPI_PIN=on I_MPI_PIN_DOMAIN=0x3F,0xFC0 I_MPI_PIN_ORDER=compact
+run_test "A4: hybrid 2×6 (256³, 100 итер)" \
+    "mpirun -np 2 $BINARY 256 256 256 64 64 64 100 hybrid"
+
+# ── A5: hybrid 1×12 (256×256×480, 2000 итер) ──────────────────────────────
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+export I_MPI_PIN=on I_MPI_PIN_DOMAIN=0xFFF I_MPI_PIN_ORDER=compact
+run_test "A5: hybrid 1×12 (256×256×480, 2000 итер) — BASELINE" \
+    "mpirun -np 1 $BINARY 256 256 480 64 64 64 2000 hybrid"
+
+# ── A6: hybrid 2×6 (256×256×480, 2000 итер) ───────────────────────────────
+clean_env
+export OMP_NUM_THREADS=6 OMP_PROC_BIND=close OMP_PLACES=cores
+export I_MPI_PIN=on I_MPI_PIN_DOMAIN=0x3F,0xFC0 I_MPI_PIN_ORDER=compact
+run_test "A6: hybrid 2×6 (256×256×480, 2000 итер) — BASELINE" \
+    "mpirun -np 2 $BINARY 256 256 480 64 64 64 2000 hybrid"
+
+# ── A7: pure_mpi 12 (256×256×480, 2000 итер) ──────────────────────────────
+clean_env
+export OMP_NUM_THREADS=1
+export I_MPI_PIN=on I_MPI_PIN_DOMAIN=0xFFF I_MPI_PIN_ORDER=compact
+run_test "A7: pure_mpi 12 (256×256×480, 2000 итер) — BASELINE" \
+    "mpirun -np 12 $BINARY 256 256 480 64 64 64 2000 pure_mpi"
+
+# ===========================================================================
+# ЧАСТЬ B: TEMPORAL BLOCKING N=4 (halo=40, b3=64)
+#   Рабочий набор L3: (2×8 + 4) × 64 × 64 × 4 = 320 КБ/поток
+#   b3=64 ≥ 8×4 + 2×8 + 1 = 49  ✓
+# ===========================================================================
+echo "########## ЧАСТЬ B: TB N=4 (halo=40, b3=64) ##########" | tee -a "$LOG"
+echo "" | tee -a "$LOG"
+
+# ── B1: TB N=4, pure_omp 12 (256³, 100 итер) — быстрый прогон ─────────────
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+export ISO3DFD_TB_STEPS=4
+run_test "B1: TB N=4, pure_omp 12 (256³, 100 итер)" \
+    "$BINARY 256 256 256 64 64 64 100 pure_omp"
+
+# ── B2: TB N=4, pure_omp 12 (256³, 2000 итер) — основной тест ──────────────
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+export ISO3DFD_TB_STEPS=4
+run_test "B2: TB N=4, pure_omp 12 (256³, 2000 итер)" \
+    "$BINARY 256 256 256 64 64 64 2000 pure_omp"
+
+# ── B3: TB N=4, hybrid 1×12 (256×256×480, 2000 итер) ─────────────────────
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+export I_MPI_PIN=on I_MPI_PIN_DOMAIN=0xFFF I_MPI_PIN_ORDER=compact
+export ISO3DFD_TB_STEPS=4
+run_test "B3: TB N=4, hybrid 1×12 (256×256×480, 2000 итер)" \
+    "mpirun -np 1 $BINARY 256 256 480 64 64 64 2000 hybrid"
+
+# ── B4: TB N=4, hybrid 2×6 (256×256×480, 2000 итер) ──────────────────────
+clean_env
+export OMP_NUM_THREADS=6 OMP_PROC_BIND=close OMP_PLACES=cores
+export I_MPI_PIN=on I_MPI_PIN_DOMAIN=0x3F,0xFC0 I_MPI_PIN_ORDER=compact
+export ISO3DFD_TB_STEPS=4
+run_test "B4: TB N=4, hybrid 2×6 (256×256×480, 2000 итер)" \
+    "mpirun -np 2 $BINARY 256 256 480 64 64 64 2000 hybrid"
+
+# ── B5: TB N=4, pure_mpi 12 (256×256×480, 2000 итер) ─────────────────────
+clean_env
+export OMP_NUM_THREADS=1
+export I_MPI_PIN=on I_MPI_PIN_DOMAIN=0xFFF I_MPI_PIN_ORDER=compact
+export ISO3DFD_TB_STEPS=4
+run_test "B5: TB N=4, pure_mpi 12 (256×256×480, 2000 итер)" \
+    "mpirun -np 12 $BINARY 256 256 480 64 64 64 2000 pure_mpi"
+
+# ── B6: TB N=4, pure_omp 12, b2_l2=56 (256³, 2000 итер) ──────────────────
+# Эксперимент: увеличенный L2 micro-block
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+export ISO3DFD_TB_STEPS=4
+export ISO3DFD_B2_L2=56
+run_test "B6: TB N=4, pure_omp 12, b2_l2=56 (256³, 2000 итер)" \
+    "$BINARY 256 256 256 64 64 64 2000 pure_omp"
+
+# ===========================================================================
+# ЧАСТЬ C: TEMPORAL BLOCKING N=8 (halo=72, b3=128)
+#   Рабочий набор L3: (2×8 + 8) × 64 × 64 × 4 = 384 КБ/поток
+#   b3=128 ≥ 8×8 + 2×8 + 1 = 81  ✓
+# ===========================================================================
+echo "########## ЧАСТЬ C: TB N=8 (halo=72, b3=128) ##########" | tee -a "$LOG"
+echo "" | tee -a "$LOG"
+
+# ── C1: TB N=8, pure_omp 12 (256³, 100 итер) — быстрый прогон ─────────────
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+export ISO3DFD_TB_STEPS=8
+run_test "C1: TB N=8, pure_omp 12 (256³, 100 итер, b3=128)" \
+    "$BINARY 256 256 256 64 64 128 100 pure_omp"
+
+# ── C2: TB N=8, pure_omp 12 (256³, 2000 итер) — основной тест ─────────────
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+export ISO3DFD_TB_STEPS=8
+run_test "C2: TB N=8, pure_omp 12 (256³, 2000 итер, b3=128)" \
+    "$BINARY 256 256 256 64 64 128 2000 pure_omp"
+
+# ── C3: TB N=8, hybrid 1×12 (256×256×480, 2000 итер) ─────────────────────
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+export I_MPI_PIN=on I_MPI_PIN_DOMAIN=0xFFF I_MPI_PIN_ORDER=compact
+export ISO3DFD_TB_STEPS=8
+run_test "C3: TB N=8, hybrid 1×12 (256×256×480, 2000 итер, b3=128)" \
+    "mpirun -np 1 $BINARY 256 256 480 64 64 128 2000 hybrid"
+
+# ── C4: TB N=8, hybrid 2×6 (256×256×480, 2000 итер) ──────────────────────
+clean_env
+export OMP_NUM_THREADS=6 OMP_PROC_BIND=close OMP_PLACES=cores
+export I_MPI_PIN=on I_MPI_PIN_DOMAIN=0x3F,0xFC0 I_MPI_PIN_ORDER=compact
+export ISO3DFD_TB_STEPS=8
+run_test "C4: TB N=8, hybrid 2×6 (256×256×480, 2000 итер, b3=128)" \
+    "mpirun -np 2 $BINARY 256 256 480 64 64 128 2000 hybrid"
+
+# ── C5: TB N=8, pure_mpi 12 (256×256×512, 2000 итер) ─────────────────────
+# n3=512 → 512/12 ≈ 42.67 (не делится нацело, но код это поддерживает)
+# Альтернатива: 256×256×528 → 528/12=44
+clean_env
+export OMP_NUM_THREADS=1
+export I_MPI_PIN=on I_MPI_PIN_DOMAIN=0xFFF I_MPI_PIN_ORDER=compact
+export ISO3DFD_TB_STEPS=8
+run_test "C5: TB N=8, pure_mpi 12 (256×256×528, 2000 итер, b3=128)" \
+    "mpirun -np 12 $BINARY 256 256 528 64 64 128 2000 pure_mpi"
+
+# ── C6: TB N=8, pure_omp 12 (512³, 1000 итер, b3=128) ────────────────────
+# Большая сетка — проверка масштабируемости TB
+clean_env
+export OMP_NUM_THREADS=12 OMP_PROC_BIND=close OMP_PLACES=cores
+export ISO3DFD_TB_STEPS=8
+run_test "C6: TB N=8, pure_omp 12 (512³, 1000 итер, b3=128)" \
+    "$BINARY 512 512 512 64 64 128 1000 pure_omp"
+
+# ===========================================================================
+echo "========================================" | tee -a "$LOG"
+echo "Все запуски завершены: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$LOG"
+echo "Лог: $LOG" | tee -a "$LOG"
+echo "========================================" | tee -a "$LOG"
