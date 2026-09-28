@@ -1,6 +1,29 @@
-# Дополнение к разделу 5: Tuning b2_l2 — повторная серия (28 сентября 2026 г.)
+# Tuning b2_l2 — повторная серия (28 сентября 2026 г.)
 
-## 5.6. Повторный tuning b2_l2 — две серии (28 сентября 2026 г.)
+## Термины и обозначения
+
+| Обозначение | Тип | Расшифровка |
+|---|---|---|
+| `b1` | Аргумент запуска | Размер блока по оси X (n1), задаётся в командной строке |
+| `b2` | Аргумент запуска | Размер блока по оси Y (n2), задаётся в командной строке |
+| `b3` | Аргумент запуска | Размер блока по оси Z (n3), задаётся в командной строке |
+| `b2_l2` | Параметр кода | Размер **микроблока** по Y внутри L3-блока; выбирается так, чтобы (2k+1) z-плоскостей × b1 × b2_l2 × 4 байта уложились в L2-кэш. Задаётся через переменную окружения `ISO3DFD_B2_L2` или вычисляется автоматически |
+| `L2` | Аппаратный | Кэш 2-го уровня процессора (256 КБ на ядро в Xeon X5675) |
+| `L3` | Аппаратный | Кэш 3-го уровня процессора (12 МБ на сокет в Xeon X5675) |
+
+> **`b2_l2` ≠ L2.** `b2` — это размер блока по Y из командной строки (в нашем случае 64). `b2_l2` — это размер **внутреннего** микроблока по Y, который подбирается под ёмкость L2-кэша. Например, при `b2=64` и `b1=64` авто-выбор даёт `b2_l2=48` — микроблок 64×48, чей 2D-срез (17 z-плоскостей × 64 × 48 × 4 = 204 КБ) помещается в L2 (256 КБ).
+
+### Иерархия блоков в коде
+
+```
+L3-блок (b1 × b2 × b3)          ← задаётся флагами запуска (64 × 64 × 64)
+  └── L2-микроблок (b1 × b2_l2) ← задаётся кодом / ISO3DFD_B2_L2 (64 × 48)
+        └── L1-векторизация     ← цикл по X, #pragma omp simd (SSE4.2, 4 × float)
+```
+
+---
+
+## Повторный tuning b2_l2 — две серии (28 сентября 2026 г.)
 
 ### Методология
 
@@ -65,6 +88,20 @@ GFLOPS
 
 ---
 
+### Почему b2_l2=64 не деградирует: механизм L2 → L3 fallback
+
+При `b2_l2=64` рабочий набор 2D LC = 17 × 64 × 64 × 4 = 272 КБ превышает ёмкость L2 (256 КБ) на 6%. Однако производительность не падает. Объяснение — в архитектуре кэша Westmere:
+
+1. **L3 — инклюзивный.** Каждая линия, находящаяся в L2, обязательно присутствует и в L3. При вытеснении линии из L2 (capacity miss) она остаётся в L3 — следующее обращение обслуживается из L3 (latency ~40 циклов), а не из DRAM (~200+ циклов) [\[1\]](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-64-ia-32-architectures-optimization-reference-manual.html).
+
+2. **L2 — non-inclusive (не инклюзивный по отношению к L1).** L2 не обязан содержать все линии L1; он работает как буфер с prefetch, а не как жёсткий уровень блокировки [\[2\]](https://www.intel.com/content/www/us/en/products/sku/88478/intel-xeon-x5675-processor-12m-cache-3-06-ghz-6-40-gt-specifications.html).
+
+3. **Код memory-bound.** При AI ≈ 0.42 FLOP/byte узкое место — пропускная способность DRAM (~64 ГБ/с на сокет). Разница между L2-hit (10 циклов) и L3-hit (40 циклов) — 30 циклов — мала по сравнению с DRAM-miss (200+ циклов). Пока линия не уходит в DRAM, производительность не страдает.
+
+**Вывод:** L2 работает как буфер между L1 и L3, а не как жёсткий уровень блокировки. 2D LC в L2 даёт выигрыш (48 vs 32: +18%), но не является порогом — переполнение на 6% переносится в L3 без штрафа.
+
+---
+
 ### Обновлённый вывод по b2_l2
 
 | Критерий | b2_l2=48 | b2_l2=56 |
@@ -95,3 +132,29 @@ GFLOPS
 | 64    | 272       | 12.73       | 12.02       | 12.78       | 12.40         | 12.51           |
 
 > **Итог по трём сериям:** b2_l2=48 — лучший средний результат (12.67 GFLOPS). Диапазон 48–64 — рабочее плато (12.51–12.67). b2_l2=32 — стабильно худший (11.39, −10.1% от оптимума).
+
+---
+
+### Ссылки на документацию Intel
+
+1. **Intel 64 and IA-32 Architectures Optimization Reference Manual** — раздел по cache blocking, ассоциативности, политикам инклюзивности:  
+   https://www.intel.com/content/www/us/en/developer/articles/technical/intel-64-ia-32-architectures-optimization-reference-manual.html
+
+2. **Intel Xeon X5675 Specifications** — L2 = 256 КБ (non-inclusive), L3 = 12 МБ (inclusive, shared per socket):  
+   https://www.intel.com/content/www/us/en/products/sku/88478/intel-xeon-x5675-processor-12m-cache-3-06-ghz-6-40-gt-specifications.html
+
+3. **Intel iso3dfd Sample** — официальный пример Intel с описанием параметров `b1 b2 b3` и cache blocking:  
+   https://www.intel.com/content/www/us/en/developer/articles/code-sample/iso3dfd-code-sample.html
+
+4. **YASK (Yet Another Stencil Kernel)** — фреймворк Intel для stencil-вычислений с temporal tiling:  
+   https://github.com/intel/yask
+
+5. **Intel oneAPI Programming Guide** — OpenMP tuning, `OMP_PROC_BIND`, `OMP_PLACES`:  
+   https://www.intel.com/content/www/us/en/docs/oneapi/programming-guide/
+
+6. **Cache Blocking Techniques (Intel)** — практическое руководство по cache blocking для stencil kernels:  
+   https://www.intel.com/content/www/us/en/developer/articles/technical/cache-blocking-techniques.html
+
+---
+
+*Дополнение подготовлено 28 сентября 2026 г., сервер kol-serv, Иркутск.*

@@ -7,7 +7,7 @@
 **Сервер:** kol-serv
 **Компилятор:** icpx (IntelLLVM 2026.1.1), `-O3 -fiopenmp -xSSE4.2`
 **MPI:** Intel MPI 2021.18
-**Стенсиль:** 16-й порядок, kHalfLength = 8, 49 точек стенсила (1 центр + 48 соседей), 63 FLOP/точка
+**Стенсиль:** 16-й порядок, kHalfLength = 8, 49 точек стенсила (1 центр + 6×8 = 48 соседей), 63 FLOP/точка (57 stencil + 6 update) [^7]
 
 ---
 
@@ -28,9 +28,9 @@
 
 ## Контекст
 
-Текущая оптимизация: блок 64×64×64, 2D LC в L3 (272 КБ << 12 МБ), L2 micro-block b2_l2=48 (204 КБ < 256 КБ), AI ≈ 0.42, ~24 GFLOPS на 12 ядрах.
+Текущая оптимизация: блок 64×64×64, 2D LC в L3 (272 КБ << 12 МБ), L2 micro-block b2_l2=48 (204 КБ < 256 КБ), AI ≈ 0.42, ~17 GFLOPS на 12 ядрах. Параметры `b1`, `b2`, `b3` — размеры блока кэш-блокировки для OpenMP-версии [^5].
 
-Результаты tuning b2_l2 (28 сентября, две серии по 5 запусков) подтверждают: плато 48–64, провал при 32. Код memory-bound — L2 работает как буфер, а не как уровень блокировки. Узкое место — DRAM bandwidth.
+Результаты tuning b2_l2 (28 сентября, две серии по 5 запусков) подтверждают: плато 48–64, провал при 32. Код memory-bound — L2 работает как буфер, а не как уровень блокировки. Узкое место — DRAM bandwidth (64 ГБ/с суммарно на 2 сокета) [^9].
 
 Цель данного раздела — обосновать переход к L3 temporal blocking для кратного прорыва производительности.
 
@@ -40,13 +40,18 @@
 
 | Уровень | Размер | Ассоциативность | Разделяемость | Политика |
 |---|---|---|---|---|
-| **L1d** | 32 КБ | 8-way | Private per core | — |
-| **L2** | 256 КБ | 8-way | Private per core | Non-inclusive |
-| **L3** | 12 МБ | 16-way | Shared per socket (6 ядер) | Inclusive |
+| **L1d** | 32 КБ [^6] | 8-way | Private per core | — |
+| **L2** | 256 КБ [^6] | 8-way | Private per core | Non-inclusive [^1] |
+| **L3** | 12 МБ [^6] | 16-way | Shared per socket (6 ядер) | Inclusive [^1] |
+
+[^1]: Intel Optimization Reference Manual (#248966, раздел 2.3.4): *«L2 may not include L1 entries because L2 is not an inclusive cache»* и *«the L3 includes all the lines in the L1 I&D caches and all the L2 caches»*. [Intel Community](https://community.intel.com/t5/Software-Tuning-Performance/Question-on-L1-writeback-performance-counters-on-westmere-EP/m-p/800907)
+[^6]: Xeon 5600 Datasheet: L1d = 32 KB, L2 = 256 KB, L3 = 12 MB. Ассоциативность подтверждена [TechPowerUp](https://www.techpowerup.com/cpu-specs/xeon-x5675.c949). [Datasheet](https://theretroweb.com/misc/documentation/xeon-5600-vol-1-datasheet-6917af5ebad62521019049.pdf)
 
 - 2 сокета: 2 × 12 МБ L3, **не разделяются между сокетами**
 - L2 — приватный, 256 КБ на ядро, **без конкуренции между потоками**
-- L3 — инклюзивный: каждая линия из L2 дублируется в L3; вытеснение из L3 → back-invalidation в L2
+- L3 — инклюзивный: каждая линия из L2 дублируется в L3; вытеснение из L3 → back-invalidation в L2 [^2]
+
+[^2]: Back-invalidation: *«any block evicted from the LLC must be evicted from the smaller caches to maintain compliance»*. [Wikipedia: Cache inclusion policy](https://en.wikipedia.org/wiki/Cache_inclusion_policy), [JabPerf](https://www.jabperf.com/last-level-cache-where-its-bad-to-be-inclusive/)
 
 ### Эффективный бюджет L3 на поток
 
@@ -77,6 +82,10 @@ L3 на сокет:              12 МБ
 
 ## 2. Почему L2 не подходит для temporal blocking на блоке 64×64
 
+Cache blocking — стандартная техника оптимизации, описанная в Intel Optimization Reference Manual (разделы 8.6.1, 11.6.1, 9.5.10) [^3].
+
+[^3]: Intel Optimization Reference Manual: [PDF](https://cdrdv2-public.intel.com/821612/248966-Optimization-Reference-Manual-V1-050.pdf), [Зеркало](https://hpc.icc.ru/hardware/64-ia-32-architectures-optimization-manual.pdf)
+
 ### Расчёт 2D LC
 
 ```
@@ -89,7 +98,9 @@ L2 = 256 КБ. **272 > 256 → 2D LC не помещается в L2.**
 
 ### Расчёт рабочего набора для temporal blocking (N шагов)
 
-Для N временных шагов нужно удержать (16 + N) z-плоскостей:
+Для N временных шагов нужно удержать (16 + N) z-плоскостей [^pl]:
+
+[^pl]: Упрощение: реально при wave-front выполнении нужно держать ~2×(2k+1) = 34 Z-плоскости одновременно (предыдущий + текущий временной шаг). Даже 34 плоскости = 544 КБ/поток, 6 потоков = 3,3 МБ < 10,5 МБ L3 — вывод не меняется.
 
 ```
 Cache_req = (16 + N) × b1 × b2 × 4
@@ -129,7 +140,7 @@ L3 бюджет на поток = 1,75 МБ (с учётом инклюзивн�
 
 ### Проверка back-invalidation
 
-Back-invalidation возникает, когда L3 вытесняет линию, активную в L2.
+Back-invalidation возникает, когда L3 вытесняет линию, активную в L2 [^2].
 
 ```
 Z-streaming на 6 потоков: 6 × 64 × 64 × 4 = 98 КБ новых данных/шаг
@@ -254,11 +265,14 @@ Z-streaming (front/back регистровые массивы) работает 
 
 ```
 AI = 0,42 FLOP/byte
-DRAM ceiling = 0,42 × 64 ГБ/с = 26,9 GFLOPS
-SSE4.2 peak   = 147 GFLOPS (12 ядер × 3,07 GHz × 4 FP32/оп)
+DRAM ceiling = 0,42 × 64 ГБ/с = 26,9 GFLOPS [^9]
+SSE4.2 peak   = 12 × 3,07 GHz × 4 FP32/оп = 147 GFLOPS [^8]
 Bottleneck = min(26,9, 147) = 26,9 GFLOPS (memory-bound)
 Реальный результат: ~16,9 GFLOPS (утилизация 63% от ceiling)
 ```
+
+[^8]: SSE4.2 peak = 12 ядер × 3,07 GHz × 4 FP32/оп = 147,4 GFLOPS. SSE4.2 не имеет FMA — умножение и сложение через один порт, реалистичная утилизация 55–70% от пика.
+[^9]: DRAM bandwidth: Westmere-EP, 3 канала DDR3-1333 × 8 байт = 32 ГБ/с на сокет, 64 ГБ/с на 2 сокета.
 
 ### Этап 1: Z-streaming + L2 micro-block (N=1)
 
@@ -274,9 +288,9 @@ Bottleneck = 29,4 GFLOPS (memory-bound)
 ```
 AI = 0,42 × 8 = 3,36 FLOP/byte
 DRAM ceiling = 3,36 × 64 = 215 GFLOPS
-SSE4.2 peak   = 147 GFLOPS
+SSE4.2 peak   = 147 GFLOPS [^8]
 Bottleneck = min(215, 147) = 147 GFLOPS (compute-bound)
-Прогноз: ~100–120 GFLOPS (утилизация 68–82% от peak)
+Прогноз: ~80–100 GFLOPS (утилизация 55–68% от peak)
 ```
 
 ### Этап 2 (агрессивный): L3 temporal blocking (N=20)
@@ -286,7 +300,7 @@ AI = 0,42 × 20 = 8,40 FLOP/byte
 DRAM ceiling = 8,40 × 64 = 538 GFLOPS
 SSE4.2 peak   = 147 GFLOPS
 Bottleneck = min(538, 147) = 147 GFLOPS (compute-bound)
-Прогноз: ~100–120 GFLOPS (ограничение — SSE4.2, не DRAM)
+Прогноз: ~80–100 GFLOPS (ограничение — SSE4.2, не DRAM)
 ```
 
 **Ключевой вывод:** при N≥8 код переходит из memory-bound в compute-bound.
@@ -317,6 +331,10 @@ Bottleneck = min(538, 147) = 147 GFLOPS (compute-bound)
 Нельзя вычислять N шагов последовательно для всего блока —
 зависимости между шагами идут по диагонали в (Z, T) пространстве.
 Точка (z, t+1) зависит от точек (z±8, t).
+
+Temporal wave-front tiling — техника, реализованная в Intel YASK (параметр `-bt`, рекомендуется `-bt 12` для Xeon Platinum) [^4].
+
+[^4]: Intel YASK (Yet Another Stencil Kernel): temporal wave-front tiling с параметром `-bt`. [YASK tutorial](https://intel.github.io/yask/YASK-tutorial.pdf)
 
 Схема волнового фронта (одномерная аналогия по Z):
 
@@ -352,9 +370,9 @@ T=N:                                       ■   ■   ■   ■
 |---|---|---|---|---|---|---|
 | **Текущий** | Базовый код V2 | 64×64 | — | 1 | 0,42 | ~17 |
 | **1** | Z-streaming + L2 micro-block | 64×64 | — | 1 | 0,46 | 26–28 |
-| **2** | + L3 temporal blocking | 64×64 | L3 | 8 | 3,36 | 100–120 |
-| **2+** | + L3 temporal blocking (deep) | 64×64 | L3 | 20 | 8,40 | 100–120 |
-| **(резерв)** | L2 temporal blocking | 48×48 | L2 | 8 | 3,68 | 100–120 |
+| **2** | + L3 temporal blocking | 64×64 | L3 | 8 | 3,36 | 80–100 |
+| **2+** | + L3 temporal blocking (deep) | 64×64 | L3 | 20 | 8,40 | 80–100 |
+| **(резерв)** | L2 temporal blocking | 48×48 | L2 | 8 | 3,68 | 80–100 |
 
 Этап 1 — подготовка (Z-streaming, ~50 строк).
 Этап 2 — кратный прорыв (temporal blocking, ~160 строк).
@@ -363,6 +381,26 @@ T=N:                                       ■   ■   ■   ■
 ---
 
 ## 9. Результаты tuning b2_l2 (28 сентября 2026 г.)
+
+### Термины и обозначения
+
+| Обозначение | Тип | Расшифровка |
+|---|---|---|
+| `b1`, `b2`, `b3` | Аргументы запуска | Размеры блока кэш-блокировки (X, Y, Z) [^5] |
+| `b2_l2` | Параметр кода | Размер L2-микроблока по оси Y (внутри блока `b1×b2`) |
+| `L2` | Кэш процессора | Кэш 2-го уровня, 256 КБ/ядро (Westmere) |
+
+[^5]: Intel iso3dfd walkthrough: *«b1 b2 b3 OR: cache block sizes for cpu openmp version»*. [Intel Developer Zone](https://www.intel.com/content/www/us/en/developer/articles/technical/iso3dfd-code-walkthrough.html)
+
+> **Не путать:** `b2_l2` — параметр микроблока в коде (integer), `L2` — кэш процессора (hardware). `b2_l2` выбирается так, чтобы 2D Layer Condition помещалась в L2-кэш.
+
+Иерархия блоков в коде:
+
+```
+L3-блок (b1 × b2 × b3)        ← задаётся аргументами запуска
+  └── L2-микроблок (b1 × b2_l2)  ← вычисляется автоматически или через ISO3DFD_B2_L2
+        └── L1-векторизация      ← цикл по X, #pragma omp simd
+```
 
 ### Условия
 
@@ -408,7 +446,7 @@ T=N:                                       ■   ■   ■   ■
 
 **Плато 40–64 — начиная с b2_l2=40, разброс между значениями не превышает 2,3%** (от 12,02 до 12,80). Это подтверждает: код memory-bound, L2 работает как буфер, а не как уровень блокировки. Реальное узкое место — DRAM bandwidth, не кэш.
 
-**b2_l2=64 не деградирует** (12,78 во второй серии — больше, чем при 48). Хотя 2D LC = 272 КБ > 256 КБ (переполнение L2), L3 вмещает данные с огромным запасом (272 КБ << 12 МБ). L2 capacity-miss попадает в L3, а не в DRAM — задержка растёт с 10 до 40 циклов, но DRAM-трафик не увеличивается.
+**b2_l2=64 не деградирует** (12,78 во второй серии — больше, чем при 48). Хотя 2D LC = 272 КБ > 256 КБ (переполнение L2), L3 вмещает данные с огромным запасом (272 КБ << 12 МБ). Благодаря инклюзивной политике L3 [^1] вытесненная из L2 линия остаётся в L3 (latency 40 циклов), а не уходит в DRAM (200+ циклов). L2 capacity-miss попадает в L3, а не в DRAM — задержка растёт с 10 до 40 циклов, но DRAM-трафик не увеличивается.
 
 ### Вывод по tuning
 
@@ -431,12 +469,28 @@ T=N:                                       ■   ■   ■   ■
 4. **Z-streaming совместим без изменений** — ядро не переписывается
 5. **Меньше изменений в коде** — блок 64×64 уже работает
 
-При N=8 код переходит из memory-bound в compute-bound (bottleneck = SSE4.2 peak = 147 GFLOPS).
+При N=8 код переходит из memory-bound в compute-bound (bottleneck = SSE4.2 peak = 147 GFLOPS [^8]).
 Дальнейшее увеличение N не увеличивает производительность, но уменьшает DRAM-трафик.
 
 **Целевая конфигурация: блок 64×64, temporal blocking N=8–12 в L3, Z-streaming, SSE4.2 4×1.**
 
-Ожидаемый результат: ~100–120 GFLOPS (6–7× к текущим ~17 GFLOPS).
+Ожидаемый результат: ~80–100 GFLOPS (5–6× к текущим ~17 GFLOPS).
+
+---
+
+## Ссылки на документацию Intel
+
+| # | Источник | Раздел | Что подтверждает |
+|---|---|---|---|
+| [^1] | Intel Optimization Reference Manual #248966, раздел 2.3.4 | 1 | L2 non-inclusive, L3 inclusive |
+| [^2] | Wikipedia: Cache inclusion policy; JabPerf | 1, 3 | Back-invalidation механизм |
+| [^3] | Intel Optimization Reference Manual (разделы 8.6.1, 11.6.1, 9.5.10) | 2 | Cache blocking — стандартная техника |
+| [^4] | Intel YASK tutorial | 7 | Temporal wave-front tiling, параметр `-bt` |
+| [^5] | Intel iso3dfd walkthrough | Контекст, 9 | b1, b2, b3 — cache block sizes |
+| [^6] | Xeon 5600 Datasheet; TechPowerUp | 1 | Размеры и ассоциативность кэша X5675 |
+| [^7] | Расчёт: 1 + 6×8 = 49 точек, 57 + 6 = 63 FLOP | Заголовок | Стенсиль 16-го порядка |
+| [^8] | Расчёт: 12 × 3,07 × 4 = 147,4 GFLOPS | 6 | SSE4.2 peak |
+| [^9] | Расчёт: 3 канала × DDR3-1333 × 8 Б = 64 ГБ/с | 6 | DRAM bandwidth Westmere-EP |
 
 ---
 
