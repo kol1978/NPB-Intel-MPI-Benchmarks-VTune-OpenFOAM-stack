@@ -2,3 +2,304 @@
 
 При просмотре файла можно щёлкнуть по любой его строке и отправить кому-нибудь ссылку на указаное место. Можно выделить набор строк, добавив в URL после номера строки последний номер строки диапазона через знак «минус», вот так (обратите внимание на L30-L32 в конце URL): https://github.com/torvalds/linux/blob/9256d5a308c95a50c6e85d682492ae1f86a70f9b/include/uapi/linux/netfilter_bridge/ebt_among.h#L30-L32
 
+HIP-рантайм у вас не линкуется (вы это доказали, убрав -lamdhip64, — иначе линкер бы не прошёл). Значит, отсутствие полной ROCm-сборки на рантайм не влияет.
+
+-------------------
+v2206 → PETSc 3.17.2 (жёстко по config.sh)
+v2312 → PETSc 3.20.x (3.20.6 — подходящий багфикс той же ветки)
+
+
+# Реальное удаление (тот же список, что в симуляции)
+sudo apt purge -y petsc-dev libpetsc-real-dev libpetsc-real3.19-dev \
+  libpetsc-real3.19t64 libpetsc3.19-dev-common libpetsc3.19-dev-examples \
+  petsc3.19-doc
+
+# libsundials-обёртку над PETSc — только если шаг 1/2 показал, что она никому больше не нужна
+sudo apt purge -y libsundials-nvecparallel-petsc6
+
+# Убрать осиротевшие зависимости
+sudo apt autoremove -y
+sudo apt clean
+
+# Пусто должно быть везде
+dpkg -l | grep -iE 'petsc|slepc'
+ls /usr/include/petsc* 2>/dev/null
+ls /usr/lib/x86_64-linux-gnu/libpetsc* 2>/dev/null
+pkg-config --list-all 2>/dev/null | grep -i petsc
+
+# pkg-config больше не должен находить PETSc из apt
+pkg-config --modversion PETSc 2>/dev/null || echo "OK: pkg-config PETSc не находит"
+
+
+===============УСТАНОВКА
+cd "$HOME/OpenFOAM"
+rm -rf petsc-src petsc-3.17.2
+
+# Клон строго по тегу (без истории — быстро и без путаницы версий)
+git clone --depth 1 --branch v3.17.2 https://gitlab.com/petsc/petsc.git petsc-3.17.2
+cd petsc-3.17.2
+git describe --tags    # должно вывести: v3.17.2
+ls -l configure        # должен существовать
+Блок 1: OpenMPI 4.1.5 (Clang + Fortran)
+bash
+# --- Сборка OpenMPI с Fortran ---
+cd "$HOME/OpenFOAM/openmpi-4.1.5"
+make distclean 2>/dev/null
+
+./configure --prefix="$MPI_PATH" \
+  CC=/opt/rocm-6.0.0/llvm/bin/clang \
+  CXX=/opt/rocm-6.0.0/llvm/bin/clang++ \
+  FC=/usr/bin/gfortran \
+  CFLAGS="-fPIE" \
+  --enable-mpi-fortran=all \
+  2>&1 | tee /tmp/ompi-configure.log
+
+make -j"$(nproc)" && make install
+
+# --- Проверка Fortran-слоя (обязательно из /tmp) ---
+cd /tmp && hash -r
+mpif90 /tmp/petsc_tf.f90 -o /tmp/petsc_tf && /tmp/petsc_tf
+
+# --- Верификация установки ---
+ls "$MPI_PATH/include" | grep -iE 'mpif'        # ждём mpif-config.h
+ls "$MPI_PATH/lib" | grep -iE 'mpifh|usempif08' # ждём libmpi_mpifh.so
+ldd "$MPI_PATH/lib/libmpi.so" | grep -iE "not found" # ждём пустоту
+Ожидание в тесте: OK fortran mpi. Если configure упадёт — хвост /tmp/ompi-configure.log покажет причину.
+
+Блок 2: PETSc 3.17.2 (с Fortran)
+Запускать только после OK fortran mpi из блока 1:
+
+__________________________________________________________
+# --- Сборка PETSc ---
+
+cd "$HOME/OpenFOAM/petsc-3.17.2"
+rm -rf arch-linux-c-opt
+
+python3 ./configure \
+  --prefix="$HOME/OpenFOAM/petsc-3.17.2-clang" \
+  --with-mpi-dir="$MPI_PATH" --with-mpi=1 \
+  --with-shared-libraries=1 \
+  --with-debugging=0 \
+  --download-f2cblaslapack=1 \
+  COPTFLAGS="-fPIC -O3" \
+  CXXOPTFLAGS="-fPIC -O3" \
+  FOPTFLAGS="-fPIC -O3" \
+  2>&1 | tee /tmp/petsc-configure.log
+
+make -j"$(nproc)" all
+make install
+
+# --- Верификация ---
+grep -E 'PETSC_VERSION_(MAJOR|MINOR|SUBMINOR)' "$HOME/OpenFOAM/petsc-3.17.2-clang/include/petscversion.h"
+pkg-config --modversion PETSc
+ls "$HOME/OpenFOAM/petsc-3.17.2-clang/lib" | grep -E '\.so|\.mod' | head -20
+ldd "$HOME/OpenFOAM/petsc-3.17.2-clang/lib/libpetsc.so" | grep -iE "mpi|gfortran|not found"
+В ldd libpetsc ожидаем: ваш MPI (ompi-clang-4.1.5/lib/...) и libgfortran — без not found.
+
+Три примечания:
+
+Если configure PETSc вдруг споткнётся на PIE (relocation R_X86_64_32 ...) — присылай хвост /tmp/petsc-configure.log, поправим флаги.
+Если в конце configure PETSc напишет рекомендацию запускать make с конкретными переменными (PETSC_ARCH=... и т.п.) — следуй её формулировке.
+Прогон теста Fortran-MPI из блока 1 — это страховка; после успешной сборки обоих пакетов его стоит прогонять заново каждый раз после смены окружения.
+
+
+
+-----------с фортраном не собирается
+cd "$HOME/OpenFOAM/petsc-3.17.2"
+
+# Чистим прежнюю сборку (создаётся заново за минуты — кэш configure не пересобирается)
+rm -rf arch-linux-c-opt
+
+python3 ./configure \
+  --prefix="$HOME/OpenFOAM/petsc-3.17.2-clang" \
+  --with-mpi-dir="$MPI_PATH" --with-mpi=1 \
+  --with-shared-libraries=1 \
+  --with-debugging=0 \
+  --download-f2cblaslapack=1
+
+make -j"$(nproc)" all
+make install
+
+Разбор: на Ubuntu gfortran по умолчанию собирает и линкует PIE (позиционно-независимые исполняемые файлы — это защита, включённая в дистрибутиве). А clang из ROCm собирает объекты без PIE. Когда configure линкует C-объект через gfortran (gfortran conftestf.f90 conftest.o -o conftest), линкер в режиме PIE отказывается принимать не-PIE объект — и тест падает. Именно поэтому же упало и в моём ручном тесте (relocation in read-only section — тот же корень).
+
+Прошлые сборки (PETSc C-only, первый OpenMPI без Fortran) работали, потому что там линковка всегда шла через clang-драйвер, который сам согласует режимы. Конфликт всплыл только там, где линкует gfortran.
+
+---------------------
+1. sudhipv/ddm-twolevel-Fortran — двухуровневый DDM‑решатель (Neumann–Neumann PCGM)
+Ссылка: github.com/sudhipv/ddm-twolevel-Fortran
+Что это: параллельный решатель для стационарного уравнения адвекции‑диффузии с двухуровневым предобуславливанием. Использует PETSc для разреженных матриц и MPI для распределённого счёта.
+Почему тебе подойдёт:
+
+Fortran + MPI + PETSc — ровно тот стек, который ты сейчас поднимаешь.
+Есть явные примеры сборки и запуска под кластер (SLURM‑скрипты).
+Реализована декомпозиция области и сборка локальных матриц в PETSc‑объекты — полезно для понимания, как правильно мапить OpenFOAM‑подобные задачи.
+2. modern-fortran/tsunami — параллельный симулятор мелкой воды (Coarrays)
+Ссылка: github.com/modern-fortran/tsunami
+Что это: учебный параллельный решатель уравнений мелкой воды. Начиная с главы 7 используется Fortran Coarrays для параллелизма.
+Нюанс: это не MPI, а Coarrays — другой стиль параллелизма, но код очень чистый и хороший для сравнения подходов. Если твоя цель — именно MPI‑код, лучше смотреть первый вариант.
+
+3. PETSc‑примеры (в самом PETSc) — готовые параллельные решатели на Fortran
+Где искать: в репозитории PETSc (ветка, соответствующая твоей версии 3.17.2) в src/ksp/ksp/examples/f90/ и src/snes/snes/examples/f90/.
+Что там есть:
+
+ex1f.F90, ex2f.F90 и т.п. — параллельные решения на сетках с KSP/SNES.
+Это самый «родной» вариант для твоего текущего PETSc: они гарантированно собираются с твоим MPI и Fortran‑слоем, и сразу покажут, как правильно вызывать PETSc из Fortran.
+Как быстро найти: после установки PETSc в $PETSC_DIR просто сделай:
+
+bash
+ls "$PETSC_DIR/src/ksp/ksp/examples/f90/"
+ls "$PETSC_DIR/src/snes/snes/examples/f90/"
+==========================
+cd "$HOME/OpenFOAM"
+# Если архив ещё не скачан:
+wget -q https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.20.6.tar.gz
+tar xzf petsc-3.20.6.tar.gz && cd petsc-3.20.6
+
+# Экспорт переменных окружения (критично: твой MPI должен быть первым в PATH)
+export PATH="$MPI_PATH/bin:$ROCM_PATH/llvm/bin:$PATH"
+export CC="$ROCM_PATH/llvm/bin/clang"
+export CXX="$ROCM_PATH/llvm/bin/clang++"
+
+# Конфигурация: без Fortran, с собственным MPI, с BLAS/LAPACK внутри
+python3 ./configure \
+  --prefix="$HOME/OpenFOAM/petsc-3.20.6-clang" \
+  --with-cc="$CC" --with-cxx="$CXX" --with-fc=0 \
+  --with-mpi-dir="$MPI_PATH" --with-mpi=1 \
+  --with-shared-libraries=1 \
+  --with-debugging=0 \
+  --download-f2cblaslapack=1
+
+# Сборка и установка
+make -j"$(nproc)"
+make install
+
+# Проверка установки
+grep -E 'PETSC_VERSION_(MAJOR|MINOR|SUBMINOR)' "$HOME/OpenFOAM/petsc-3.20.6-clang/include/petscversion.h"
+ls -la "$HOME/OpenFOAM/petsc-3.20.6-clang/lib" | grep libpetsc
+
+---------------------------
+
+bash
+# === PETSc 3.20.x из исходников: Clang 17 (ROCm) + кастомный OpenMPI 4.1.5 ===
+
+# 0. Контроль окружения
+echo "CC будут использованы: $(which mpicc), $(which clang)"
+echo "ROCM_PATH=$ROCM_PATH  MPI_PATH=$MPI_PATH"
+
+# 1. Скачать и распаковать
+cd "$HOME/OpenFOAM"
+wget -q https://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.20.6.tar.gz
+tar xzf petsc-3.20.6.tar.gz && cd petsc-3.20.6
+
+# 2. Компиляторы clang из ROCm, MPI — только наш (mpicc из PATH)
+export PATH="$MPI_PATH/bin:$ROCM_PATH/llvm/bin:$PATH"
+export CC="$ROCM_PATH/llvm/bin/clang"
+export CXX="$ROCM_PATH/llvm/bin/clang++"
+
+# 3. Конфигурация
+python3 ./configure \
+  --prefix="$HOME/OpenFOAM/petsc-3.20.6-clang" \
+  --with-cc="$CC" --with-cxx="$CXX" --with-fc=0 \
+  --with-mpi-dir="$MPI_PATH" --with-mpi=1 \
+  --with-shared-libraries=1 \
+  --with-debugging=0 \
+  --download-f2cblaslapack=1
+
+# 4. Сборка и установка (пути PETSC_DIR/PETSC_ARCH configure подскажет в конце)
+make all -j"$(nproc)"
+make install
+
+# 5. Окружение — добавить в ~/.bashrc
+cat >> ~/.bashrc <<'EOF'
+
+# PETSc 3.20.6 (clang/OpenMPI)
+export PETSC_DIR=$HOME/OpenFOAM/petsc-3.20.6-clang
+export PKG_CONFIG_PATH=$PETSC_DIR/lib/pkgconfig:$PKG_CONFIG_PATH
+EOF
+
+Пояснения по флагам:
+
+--with-fc=0 — компилятора Fortran у clang-тулчейна нет, и он не нужен, если PETSc используется из C/C++.
+--download-f2cblaslapack=1 — PETSc сам соберёт эталонные BLAS/LAPACK тем же clang'ом. Альтернатива: --with-blas-lapack-lib=-lopenblas с установленным libopenblas-dev (быстрее, но добавляет внешнюю зависимость в ABI-цепочку).
+Установка в отдельный префикс -clang — как у тебя с umpire и ompi: версии окружений не путаются.
+Проверка после установки
+bash
+# === Верификация PETSc ===
+grep -E 'PETSC_VERSION_(MAJOR|MINOR|SUBMINOR)' "$PETSC_DIR/include/petscversion.h"
+ls -la "$PETSC_DIR/lib" | grep libpetsc
+pkg-config --modversion PETSc
+
+# Контроль, что PETSc слинкован с твоим MPI (не с системным)
+ldd "$PETSC_DIR/lib/libpetsc_real.so" | grep -E 'mpi|clang'
+
+# Функциональный тест: решаем уравнение Пуассона
+cd "$HOME/OpenFOAM/petsc-3.20.6/src/snes/examples/tutorials"
+make ex19 PETSC_DIR=$PETSC_DIR PETSC_ARCH="" 2>/dev/null || \
+  mpicc -o ex19 ex19.c -I"$PETSC_DIR/include" -L"$PETSC_DIR/lib" -lpetsc
+mpirun -np 2 ./ex19 -snes_monitor
+Как читать:
+
+в petscversion.h должно быть MAJOR 3, MINOR 20;
+ldd должен показать libmpi.so из /home/kol/OpenFOAM/ompi-clang-4.1.5/lib — если увидишь /usr/lib/.../libmpi.so, значит, где-то PATH изменился и надо вернуться к проверке окружения;
+mpirun -np 2 ./ex19 с монитором Ньютона — живое подтверждение, что MPI + PETSc работают вместе.
+Соберёшь — прогони функциональный тест и покажи вывод ldd; если линковка уйдёт в системный MPI, разберём где PATH «подтёк».
+
+echo "WM_COMPILER=$WM_COMPILER"
+echo "WM_MPLIB=$WM_MPLIB"
+echo "WM_PROJECT_DIR=$WM_PROJECT_DIR"
+which clang mpirun
+
+==========================
+
+# 1. Окружение (вместо source scripts/setup.sh из build.sh)
+cd "$HOME/OpenFOAM/OpenFOAM-v2206"
+source scripts/setup.sh
+
+# 2. ThirdParty (SCOTCH + остальные)
+cd "$HOME/OpenFOAM/ThirdParty-v2206"
+./Allwmake -j -l
+
+# 3. Сам OpenFOAM
+cd "$HOME/OpenFOAM/OpenFOAM-v2206"
+./Allwmake -j -l 2>&1 | tee /tmp/of-wmake.log
+
+
+./build.sh \
+  --prefix "$HOME/OpenFOAM/HMM" \
+  --openfoam-version 2206 \
+  --load-benchmark \
+  2>&1 | tee /tmp/of-hmm-build3.log
+
+  ==========================================================
+Ginkgo (репозиторий и документация): github.com/ginkgo-project/ginkgo, docs.ginkgo-project.org
+OGL (OpenFOAM Ginkgo Layer): ищи по названию «OpenFOAM Ginkgo Layer» на GitHub; релизы и инструкции обычно в README и ветке main.
+EXASIM / KIT‑TUM проекты: ищи «EXASIM OpenFOAM», «KIT TUM NeoFOAM» — это академические репозитории, у них часто есть отдельные страницы с туториалами.
+PETSc: petsc.org (там же есть примеры с Kokkos/SYCL).
+
+OpenFOAM Ginkgo Layer
+
+
+
+=============
+  Ginkgo
+Основной репозиторий:  — численная линейная алгебра, бэкенды CUDA/HIP/DPC++(SYCL)/OpenMP; для SYCL требуется oneAPI 2024.1+.
+Сайт проекта:  — документация, туториалы, бенчмарки.
+Статья Intel о порте на oneAPI и интеграции с OpenFOAM (та, что я цитировала с цифрами 54-ядерный Xeon ≈ 1 GPU, 5× на ноде из 6 GPU): .
+OGL
+Репозиторий:  — «The OpenFOAM Ginkgo Layer», плагин-обёртка: заменяет PCG на GKOCG в fvSolution, поддерживает OpenFOAM 6+ и v2106+, сам скачивает и собирает Ginkgo при сборке.
+Релизы (последний v0.5.4 — распределённые вычисления через Ginkgo 1.5): .
+EXASIM
+Сайт проекта:  — это тот самый проект с KIT и TUM по созданию интерфейса OpenFOAM–Ginkgo; там же собираются хакатоны по NeoFOAM.
+Практические отчёты с Intel Arc Pro B70 (свежее, 2026 год)
+Это серия репозиториев одного автора с детальными «полевыми» отчётами — полезно именно потому, что там зафиксированы реальные баги и обходы:
+
+OpenFOAM 13 + GPU offload:  — и важное обновление: майский вывод «софт не готов, CPU выигрывает 1,5×» уже отменён — после миграции на Ginkgo 2.0 с настроенным мультигридом GPU-решение давления обогнало CPU GAMG на этом железе (18,67 с против ~22 с на 16 рангах).
+PETSc + Kokkos + SYCL на том же B70:  — альтернативный стек через PETSc вместо Ginkgo.
+Профиль автора:  — там же FluidX3D и Paraview на B70.
+И по теме вашего порта
+В научной работе о платформонезависимых бэкендах для OpenFOAM (сравнение OGL, YoctoFOAM, OpenFOAM_HMM, PETSc4FOAM и других) перечислены все живые альтернативы: .
+
+Кстати, заметный штрих из первого репозитория: тот же автор ругал regression в compute-runtime 26.14, где мульти-ранговый MPI+Level Zero падал при zeInit — характерная «свежесть» Intel-стека. У вас с ROCm таких сюрпризов меньше.
+
+Если захотите попробовать OGL на своём окружении — он собирается через CMake и сам подтянет Ginkgo, но ваш clang из ROCm и системная OpenMPI как раз подойдут: -DGINKGO_BUILD_OMP на CPU-этапе, а SYCL-бэкенд понадобится только для Intel GPU.
+
