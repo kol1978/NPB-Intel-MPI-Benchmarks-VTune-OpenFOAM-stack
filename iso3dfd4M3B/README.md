@@ -395,7 +395,7 @@ mpirun -n 2 ./build/iso3dfd 256 256 256 64 64 64 100 hybrid
 
 ---
 
-## 7. [Архитектура проекта] (iso3dfd_architecture_v2_tb.md)
+## 7. [Архитектура проекта](iso3dfd_architecture_v2_tb.md)
 
 ```text
 iso3dfd4M3B/
